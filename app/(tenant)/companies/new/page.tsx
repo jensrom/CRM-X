@@ -82,4 +82,18 @@ export default function NewCompanyPage() {
               rows={3}
               placeholder="Interne noter om firmaet..."
               className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm
-                         placehol
+                         placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <Button type="submit" size="lg">Opret firma</Button>
+            <Link href="/companies">
+              <Button type="button" variant="ghost" size="lg">Annuller</Button>
+            </Link>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}

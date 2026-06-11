@@ -839,18 +839,17 @@ model InvoiceLine {
 // ============================================================
 
 model Notification {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   tenantId   String
   userId     String
-  // type: bundle_low | bundle_expired | license_expiring | license_expired | ticket_overdue | ticket_assigned
   type       String
   title      String
-  message    String    @db.Text
-  isRead     Boolean   @default(false)
+  message    String   @db.Text
+  isRead     Boolean  @default(false)
   readAt     DateTime?
   linkUrl    String?
-  relatedId  String?   // ID på relateret objekt (bundle, license, ticket)
-  createdAt  DateTime  @default(now())
+  relatedId  String?
+  createdAt  DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -860,36 +859,25 @@ model Notification {
 }
 
 // ============================================================
-// AUDIT LOG (compliance: GDPR Art. 30, ISO 27001 A.8.15/A.12.4, SOC 2 CC7.2/CC7.3)
-// Append-only. Ingen UPDATE/DELETE i kode.
+// AUDIT LOG (append-only)
 // ============================================================
-
 model AuditLog {
-  id          String   @id @default(cuid())
-  tenantId    String?  // null for super_admin-handlinger på platform-niveau
-  actorId     String?  // bruger-id (kan være null for system-handlinger)
-  actorEmail  String?  // gemmes denormaliseret så det er læseligt efter brugersletning
-  actorRole   String?  // role-snapshot på handlingstidspunktet
-  // action: login_success | login_failed | logout | create | update | delete |
-  //         export | erase | rectify | role_change | password_change | mfa_enable |
-  //         impersonate_start | impersonate_stop | ...
-  action      String
-  // resourceType: user | tenant | company | contact | ticket | role | license | session | api_token | ...
+  id           String   @id @default(cuid())
+  tenantId     String?
+  actorId      String?
+  actorEmail   String?
+  actorRole    String?
+  action       String
   resourceType String
-  resourceId  String?  // ID på objekt der blev påvirket
-  // Snapshot før/efter for ændringer (JSON). null for create/delete-typer.
-  before      Json?
-  after       Json?
-  // Sikkerhedskontekst
-  ipAddress   String?
-  userAgent   String?  @db.Text
-  // Resultat: success | failure | denied
-  outcome     String   @default("success")
-  // Fri tekst-besked til kontekst
-  message     String?  @db.Text
-  createdAt   DateTime @default(now())
+  resourceId   String?
+  before       Json?
+  after        Json?
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  outcome      String   @default("success")
+  message      String?  @db.Text
+  createdAt    DateTime @default(now())
 
-  // Indekser for typiske audit-queries
   @@index([tenantId, createdAt])
   @@index([actorId, createdAt])
   @@index([resourceType, resourceId])

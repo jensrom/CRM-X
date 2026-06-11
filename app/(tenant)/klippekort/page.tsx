@@ -154,7 +154,7 @@ export default async function KlippekortPage() {
               </tbody>
             </table>
           </div>
-          <div className="px-4 py-2.5 border-t border-border bg-secondary/20 text-xs text-muted-foreground">
+                    <div className="px-4 py-2.5 border-t border-border bg-secondary/20 text-xs text-muted-foreground">
             {bundles.length} klippekort i alt
           </div>
         </div>

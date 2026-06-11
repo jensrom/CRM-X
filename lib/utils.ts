@@ -127,5 +127,5 @@ export const PRICING_INTERVALS = {
   quarterly: "Kvartalsvis",
   biannual: "Halvårlig",
   annual: "Årlig",
-  onetime: "Engangsbeløb",
+  onetime: "Engangspris",
 } as const;
