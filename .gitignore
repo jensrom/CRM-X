@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variabler — MÅ ALDRIG committes
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Next.js
+.next/
+out/
+
+# Production build
+build/
+dist/
+
+# Prisma generated
+prisma/generated/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

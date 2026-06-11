@@ -1,0 +1,898 @@
+// CRM-X — Prisma Schema
+// Multi-tenant CRM platform for konsulenthuse
+// Alle tabeller har tenantId for row-level isolation
+
+generator client {
+  provider      = "prisma-client-js"
+  // Vercel kører Linux med OpenSSL 3.0 — uden dette target fejler client på prod.
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================
+// SUPER ADMIN (platform-niveau, ikke tenant-specifik)
+// ============================================================
+
+model SuperAdmin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("super_admins")
+}
+
+// ============================================================
+// TENANTS (én pr. kundeoprettet CRM-instance)
+// ============================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique // = subdomain: slug.plesnertech.dk
+
+  // --- Plan & moduler ---
+  // Aktive moduler: ["sales","marketing","support","projects","products","licenses"]
+  modules       String[] @default(["sales", "support"])
+  plan          String   @default("small")   // small | medium | large
+  maxUsers      Int      @default(5)
+
+  // --- Livscyklus-status ---
+  // active | trial | suspended | scheduled_deletion | deleted
+  status              String    @default("trial")
+  trialEndsAt         DateTime?
+  suspendedAt         DateTime?
+  scheduledDeletionAt DateTime?
+  deletedAt           DateTime?
+  isActive            Boolean   @default(true) // Behold for bagudkompatibilitet — udfases når status-flowet er stabilt
+
+  // --- Billing ---
+  // paid | overdue | trial | cancelled | manual
+  billingStatus  String    @default("trial")
+  billingCurrency String   @default("USD")    // USD | DKK
+  nextInvoiceDue DateTime?
+
+  // --- Firma-stamdata ---
+  cvr            String?
+  industry       String?
+  country        String   @default("DK")
+  address        String?
+  zipCode        String?
+  city           String?
+  website        String?
+  employeeCount  String?   // "1-5" | "6-20" | "21-50" | "51-200" | "200+"
+
+  // --- Primær admin-kontakt (denormaliseret for hurtig adgang) ---
+  adminName  String?
+  adminEmail String?
+  adminPhone String?
+  adminTitle String?
+
+  // --- Branding ---
+  logoUrl         String?
+  accentColor     String?   // hex, fx "#2563EB"
+  welcomeMessage  String?   @db.Text
+
+  // --- Reference-praefikser ---
+  ticketPrefix  String   @default("T")
+  projectPrefix String   @default("P")
+  bundlePrefix  String   @default("KB")
+  invoicePrefix String   @default("F")
+
+  // --- Faktura-konfiguration (afsenderinfo + skabelon-tekster) ---
+  // Bruges af /settings/invoice-config og PDF-render. Alle valgfri — falder
+  // tilbage til kunde-/tenant-stamdata hvis ikke sat.
+  invoiceCompanyName String?
+  invoiceAddress     String?
+  invoiceZipCity     String?
+  invoiceCvr         String?
+  invoiceEan         String?
+  invoicePhone       String?
+  invoiceEmail       String?
+  invoiceFooter      String? @db.Text  // Fri tekst nederst på fakturaer (betalingsbetingelser, bank-info)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users            User[]
+  roles            Role[]
+  companies        Company[]
+  contacts         Contact[]
+  products         Product[]
+  tickets          Ticket[]
+  projects         Project[]
+  hourBundles      HourBundle[]
+  projectBundles   ProjectBundle[]
+  licenses         License[]
+  campaigns        Campaign[]
+  leads            Lead[]
+  activities       Activity[]
+  deals            Deal[]
+  notifications    Notification[]
+  invoices         Invoice[]
+  userInvites      UserInvite[]
+  bundlePricing    BundlePricingTier[]
+  apiTokens        ApiToken[]
+
+  @@map("tenants")
+}
+
+// ============================================================
+// KLIPPEKORT-PRISTABEL
+// Pr. tenant: timer-tærskel → kr/time. Bruges til at auto-udfylde
+// pris i klippekort-opret-formularen.
+// Eksempel:
+//   minHours=1   hourlyRate=850   (1-20 timer)
+//   minHours=21  hourlyRate=800   (21-50 timer)
+//   minHours=51  hourlyRate=750   (51+)
+// ============================================================
+
+model BundlePricingTier {
+  id         String   @id @default(cuid())
+  tenantId   String
+  // Nedre grænse (inklusiv) for dette pris-tier
+  minHours   Int
+  // Pris pr. time i tenantens valuta (default DKK)
+  hourlyRate Decimal  @db.Decimal(10, 2)
+  // Visningsnavn — fx "Standard", "Volumen", "Storkunde"
+  label      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, minHours])
+  @@map("bundle_pricing_tiers")
+}
+
+// ============================================================
+// USER INVITE (token-baseret invite-flow)
+// Compliance: lifecycle-events audit-logges
+// ============================================================
+
+// ============================================================
+// API TOKENS
+// Bearer-token autentificering på /api/v1/*-routes.
+// KUN tilgængelig på Large-pakke (tjekkes i UI + middleware).
+// Compliance: tokens lagres som SHA-256 hash, klartekst returneres
+// kun én gang ved oprettelse (samme mønster som UserInvite).
+// ============================================================
+
+model ApiToken {
+  id          String   @id @default(cuid())
+  tenantId    String
+  // Vis-navn — fx "Zapier integration", "Webshop"
+  name        String
+  // SHA-256 hash af klartekst. Klartekst gemmes ALDRIG.
+  tokenHash   String   @unique
+  // Sidste 4 cifre af klartekst-token — vises som "•••• jx7k" i listen
+  tokenPrefix String
+  // Scopes (foreløbig "read" eller "write"; senere granulært)
+  scopes      String[] @default(["read"])
+  // Permanent token har expiresAt = null
+  expiresAt   DateTime?
+  // Hvornår tokenet sidst blev brugt (opdateres af middleware)
+  lastUsedAt  DateTime?
+  // Soft-revoke via isActive=false (bevarer audit-historik)
+  isActive    Boolean  @default(true)
+  createdById String?  // User der oprettede tokenet
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+  @@map("api_tokens")
+}
+
+model UserInvite {
+  id           String    @id @default(cuid())
+  tenantId     String
+  // SHA-256 hash af klartekst-token. Klartekst sendes kun i invite-mailen.
+  tokenHash    String    @unique
+  email        String
+  name         String?   // Pre-udfyldt på accept-side
+  roleId       String?
+  // Tone: "warm" (Small/Medium) | "professional" (Large/Enterprise)
+  inviteTone   String    @default("warm")
+  // Status: pending | accepted | revoked | expired
+  status       String    @default("pending")
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  acceptedByUserId String?
+  invitedByUserId String?
+  invitedBySuperAdminId String?
+  createdAt    DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([email])
+  @@map("user_invites")
+}
+
+// ============================================================
+// BRUGERE & ROLLER
+// ============================================================
+
+model User {
+  id         String   @id @default(cuid())
+  tenantId   String
+  email      String
+  name       String
+  password   String   // bcrypt hashed
+  roleId     String?
+  avatar     String?
+  isActive   Boolean  @default(true)
+  lastLogin  DateTime?
+  // --- Profil-felter (fra "Min profil" i indstillinger) ---
+  phone      String?
+  title      String?  // Stilling — fx "Account Manager", "Konsulent"
+  // Reserveret til Fase D (#10 i ROADMAP_BIG_SCOPE) — udvidet profil
+  description String? @db.Text
+  language   String?  // ISO 639-1, fx "da" / "en" — null = arve fra tenant
+  timezone   String?  // IANA, fx "Europe/Copenhagen" — null = arve fra tenant
+  qrPreference String? @default("hidden") // hidden | visible — global QR-præference
+  // --- MFA (TOTP — RFC 6238) ---
+  // Compliance: ISO 27001 A.8.5, SOC 2 CC6.1, GDPR Art. 32
+  mfaEnabled       Boolean  @default(false)
+  mfaSecret        String?  // base32-encoded shared secret; krypteres på app-laget før save
+  mfaRecoveryCodes Json?    // array af bcrypt-hashes for engangs-recovery-codes
+  mfaEnrolledAt    DateTime?
+  // --- Password security ---
+  passwordChangedAt DateTime?  // bruges til at tvinge re-login efter password reset
+  failedLoginCount  Int      @default(0)
+  lockedUntil       DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role          Role?          @relation(fields: [roleId], references: [id])
+  timeLogs        TimeLog[]
+  assignedTickets  Ticket[]         @relation("TicketAssignee")
+  assignedDeals    Deal[]           @relation("DealAssignee")
+  managedProjects  Project[]        @relation("ProjectManager")
+  activities      Activity[]
+  checkIns        ActiveCheckIn[]
+  notifications   Notification[]
+  ticketComments  TicketComment[]
+
+  @@unique([tenantId, email])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  // Permissions JSON: { sales: { view, create, edit, delete }, support: {...}, ... }
+  permissions Json     @default("{}")
+  isSystem    Boolean  @default(false) // System-roller kan ikke slettes
+  createdAt   DateTime @default(now())
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users   User[]
+
+  @@unique([tenantId, name])
+  @@map("roles")
+}
+
+// ============================================================
+// FIRMAER & KONTAKTER
+// ============================================================
+
+model Company {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  orgNumber    String?  // CVR-nummer
+  phone        String?
+  email        String?
+  invoiceEmail String?  // Fakturamail (bruges til fakturaudsendelse)
+  website      String?
+  address      String?
+  city         String?
+  zipCode      String?
+  country      String   @default("Danmark")
+  industry     String?
+  notes        String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contacts         Contact[]
+  departments      Department[]
+  customerProducts CustomerProduct[]
+  tickets          Ticket[]
+  projects         Project[]
+  licenses         License[]
+  hourBundles      HourBundle[]
+  activities       Activity[]
+  deals            Deal[]
+  invoices         Invoice[]
+
+  @@map("companies")
+}
+
+model Department {
+  id         String  @id @default(cuid())
+  tenantId   String
+  companyId  String
+  name       String
+  managerId  String? // Contact ID for afdelingsleder
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  manager          Contact?          @relation("DepartmentManager", fields: [managerId], references: [id])
+  customerProducts CustomerProduct[]
+
+  @@map("departments")
+}
+
+model Contact {
+  id              String   @id @default(cuid())
+  tenantId        String
+  companyId       String?
+  departmentId    String?
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  mobile          String?
+  title           String?  // Stilling
+  // Udvidede felter
+  linkedInUrl     String?
+  decisionRole    String?  // none | influencer | decision_maker | budget_holder | champion
+  notes           String?  @db.Text
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company    Company?     @relation(fields: [companyId], references: [id])
+  managedDepartments Department[] @relation("DepartmentManager")
+  activities Activity[]
+  tickets    Ticket[]
+
+  @@map("contacts")
+}
+
+// ============================================================
+// PRODUKTER & PRISER
+// ============================================================
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?  @db.Text
+  sku         String?
+  // type: saas | software_license | hardware | consulting | accessory | other
+  // (synkroniseret med lib/product-types.ts — single source of truth i kode)
+  type        String   @default("other")
+  category    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pricing          ProductPricing[]
+  customerProducts CustomerProduct[]
+  tickets          Ticket[]
+  projectProducts  ProjectProduct[]
+  licenses         License[]
+  timeLogs         TimeLog[]
+
+  @@map("products")
+}
+
+model ProductPricing {
+  id        String  @id @default(cuid())
+  productId String
+  // interval: monthly | quarterly | biannual | annual | onetime
+  interval  String
+  price     Decimal @db.Decimal(10, 2)
+  currency  String  @default("DKK")
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, interval])
+  @@map("product_pricing")
+}
+
+model CustomerProduct {
+  id           String   @id @default(cuid())
+  tenantId     String
+  companyId    String
+  departmentId String?
+  productId    String
+  managerId    String?  // Contact: afdelingsleder/ansvarlig
+  pricingId    String?
+  startDate    DateTime @default(now())
+  endDate      DateTime?
+  notes        String?
+  isActive     Boolean  @default(true)
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id])
+  product    Product     @relation(fields: [productId], references: [id])
+
+  @@map("customer_products")
+}
+
+// ============================================================
+// SUPPORT TICKETS
+// ============================================================
+
+model Ticket {
+  id           String   @id @default(cuid())
+  tenantId     String
+  number       Int      // Auto-increment pr. tenant (managed i kode)
+  companyId    String
+  contactId    String?
+  productId    String?
+  assignedToId String?
+  title        String
+  description  String   @db.Text
+  // status: open | pending_customer | pending_supplier | resolved | closed
+  // (synkroniseret med lib/utils.ts TICKET_STATUS — bemærk: "new" og "pending_reply"
+  //  er udfaset i UI; eksisterende rows mappes på read via lib/ticket-status.ts)
+  status       String   @default("open")
+  // priority: low | normal | high | critical
+  priority     String   @default("normal")
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company    Company         @relation(fields: [companyId], references: [id])
+  contact    Contact?        @relation(fields: [contactId], references: [id])
+  product    Product?        @relation(fields: [productId], references: [id])
+  assignedTo User?           @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  timeLogs   TimeLog[]
+  comments   TicketComment[]
+
+  @@unique([tenantId, number])
+  @@map("tickets")
+}
+
+model TicketComment {
+  id         String   @id @default(cuid())
+  ticketId   String
+  userId     String
+  content    String   @db.Text
+  isInternal Boolean  @default(false) // Intern note vs. ekstern besked
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("ticket_comments")
+}
+
+// ============================================================
+// TIDREGISTRERING (delt mellem tickets og projekter)
+// ============================================================
+
+model TimeLog {
+  id            String   @id @default(cuid())
+  tenantId      String
+  userId        String
+  ticketId      String?
+  projectId     String?
+  bundleId      String?  // Hvilket klippekort timerne er trukket fra (null = ikke trukket)
+  productId     String?  // KPI: hvilket produkt bruges timerne paa
+  backlogItemId String?
+  date          DateTime @db.Date
+  startTime     DateTime?
+  endTime       DateTime?
+  durationMin   Int      // Varighed i minutter
+  description   String?  @db.Text
+  isBillable    Boolean  @default(true)
+  deductedFromBundle Boolean @default(false) // Om timerne er trukket paa klippekort
+  createdAt     DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+  ticket      Ticket?     @relation(fields: [ticketId], references: [id])
+  project     Project?    @relation(fields: [projectId], references: [id])
+  bundle      HourBundle? @relation(fields: [bundleId], references: [id])
+  product     Product?    @relation(fields: [productId], references: [id])
+  backlogItem BacklogItem? @relation(fields: [backlogItemId], references: [id])
+
+  @@map("time_logs")
+}
+
+// Aktivt check-ind (realtid — hvem er tjekket ind hvor nu)
+model ActiveCheckIn {
+  id            String   @id @default(cuid())
+  userId        String   @unique // Én aktiv check-in pr. bruger
+  tenantId      String
+  projectId     String
+  backlogItemId String?
+  startedAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("active_check_ins")
+}
+
+// ============================================================
+// KLIPPEKORT (HOUR BUNDLES)
+// ============================================================
+
+model HourBundle {
+  id           String   @id @default(cuid())
+  tenantId     String
+  companyId    String
+  number       Int  @default(1)  // Auto-increment pr. tenant (KB-0001 format)
+  name         String?  // Valgfrit navn, fx "20-timers pakke Q3 2025"
+  totalHours   Int      // Antal timer solgt
+  usedMinutes  Int      @default(0) // Forbrugte minutter (denormaliseret for performance)
+  price        Decimal? @db.Decimal(10, 2)
+  purchaseDate DateTime @default(now())
+  expiresAt    DateTime?
+  notes        String?
+  isActive     Boolean  @default(true)
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company        Company         @relation(fields: [companyId], references: [id])
+  projectBundles ProjectBundle[]
+  timeLogs       TimeLog[]
+
+  @@unique([tenantId, number])
+  @@map("hour_bundles")
+}
+
+// ============================================================
+// PROJEKTER
+// ============================================================
+
+model Project {
+  id           String   @id @default(cuid())
+  tenantId     String
+  companyId    String
+  assignedToId String?
+  number       Int      // Auto-increment pr. tenant (managed i kode)
+  title        String
+  description  String?  @db.Text
+  // status: planning | active | on_hold | completed | cancelled
+  status       String   @default("planning")
+  startDate    DateTime?
+  endDate      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company        Company          @relation(fields: [companyId], references: [id])
+  assignedTo     User?            @relation("ProjectManager", fields: [assignedToId], references: [id])
+  products       ProjectProduct[]
+  backlog        BacklogItem[]
+  timeLogs       TimeLog[]
+  projectBundles ProjectBundle[]
+  invoices       Invoice[]
+
+  @@unique([tenantId, number])
+  @@map("projects")
+}
+
+// Junction: et projekt kan have flere klippekort (i prioriteret raekkefolge)
+model ProjectBundle {
+  id        String   @id @default(cuid())
+  tenantId  String
+  projectId String
+  bundleId  String
+  sortOrder Int      @default(0) // 0 = først, 1 = næste, osv.
+  addedAt   DateTime @default(now())
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  project Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  bundle  HourBundle @relation(fields: [bundleId], references: [id])
+
+  @@unique([projectId, bundleId])
+  @@map("project_bundles")
+}
+
+model ProjectProduct {
+  id        String @id @default(cuid())
+  projectId String
+  productId String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([projectId, productId])
+  @@map("project_products")
+}
+
+model BacklogItem {
+  id            String   @id @default(cuid())
+  projectId     String
+  title         String
+  description   String?  @db.Text
+  // priority: low | medium | high | critical
+  priority      String   @default("medium")
+  // status: todo | in_progress | done
+  status        String   @default("todo")
+  estimateHours Decimal? @db.Decimal(6, 2)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  timeLogs TimeLog[]
+
+  @@map("backlog_items")
+}
+
+// ============================================================
+// LICENSER (ADD-ON MODUL)
+// ============================================================
+
+model License {
+  id                String    @id @default(cuid())
+  tenantId          String
+  companyId         String
+  productId         String?
+  name              String
+  licenseKey        String?   // Krypteret ved lagring
+  notes             String?   @db.Text
+  expiresAt         DateTime?
+  // status: active | expired | pending_renewal | cancelled
+  status            String    @default("active")
+  notifyDaysBefore  Int       @default(30)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company  Company       @relation(fields: [companyId], references: [id])
+  product  Product?      @relation(fields: [productId], references: [id])
+  files    LicenseFile[]
+
+  @@map("licenses")
+}
+
+model LicenseFile {
+  id         String   @id @default(cuid())
+  licenseId  String
+  name       String
+  url        String   // Vercel Blob URL
+  size       Int      // bytes
+  mimeType   String?
+  uploadedAt DateTime @default(now())
+
+  license License @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+
+  @@map("license_files")
+}
+
+// ============================================================
+// SALG (PIPELINE)
+// ============================================================
+
+model Deal {
+  id                String    @id @default(cuid())
+  tenantId          String
+  companyId         String
+  contactId         String?
+  assignedToId      String?
+  title             String
+  value             Decimal?  @db.Decimal(12, 2)
+  currency          String    @default("DKK")
+  // stage: new | qualified | proposal | negotiation | won | lost
+  stage             String    @default("new")
+  probability       Int       @default(0) // 0-100%
+  expectedCloseDate DateTime?
+  closedAt          DateTime?
+  lostReason        String?
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company    Company    @relation(fields: [companyId], references: [id])
+  assignedTo User?      @relation("DealAssignee", fields: [assignedToId], references: [id])
+  activities Activity[]
+
+  @@map("deals")
+}
+
+// ============================================================
+// MARKETING
+// ============================================================
+
+model Campaign {
+  id        String    @id @default(cuid())
+  tenantId  String
+  name      String
+  // type: email | event | social | ads | other
+  type      String?
+  // status: draft | active | completed | paused | cancelled
+  status    String    @default("draft")
+  startDate DateTime?
+  endDate   DateTime?
+  budget    Decimal?  @db.Decimal(10, 2)
+  notes     String?   @db.Text
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leads  Lead[]
+
+  @@map("campaigns")
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  tenantId   String
+  campaignId String?
+  firstName  String
+  lastName   String
+  email      String?
+  phone      String?
+  company    String?
+  jobTitle   String?
+  source     String?  // web | referral | event | cold-call | other
+  // status: new | contacted | qualified | converted | lost
+  status     String   @default("new")
+  notes      String?  @db.Text
+  convertedCompanyId String? // Hvis konverteret til Company
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+
+  @@map("leads")
+}
+
+// ============================================================
+// AKTIVITETER (delt — møder, opkald, opgaver, opfølgninger)
+// ============================================================
+
+model Activity {
+  id          String    @id @default(cuid())
+  tenantId    String
+  userId      String
+  // type: meeting | call | email | task | followup | note
+  type        String
+  subject     String
+  description String?   @db.Text
+  dueDate     DateTime?
+  completedAt DateTime?
+  companyId   String?
+  contactId   String?
+  dealId      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id])
+  contact Contact? @relation(fields: [contactId], references: [id])
+  deal    Deal?    @relation(fields: [dealId], references: [id])
+
+  @@map("activities")
+}
+
+// ============================================================
+// FAKTURAER
+// ============================================================
+
+model Invoice {
+  id           String    @id @default(cuid())
+  tenantId     String
+  companyId    String
+  projectId    String?
+  number       Int       // Auto-increment pr. tenant (F-0001 format)
+  status       String    @default("draft") // draft | sent | paid | cancelled
+  issueDate    DateTime  @default(now())
+  dueDate      DateTime?
+  currency     String    @default("DKK")
+  notes        String?   @db.Text
+  // Moms & kundetype
+  vatEnabled   Boolean   @default(true)   // 25% dansk moms
+  vatPct       Decimal   @db.Decimal(5,2) @default(25) // Momsprocent (default 25)
+  customerType String    @default("B2B")  // B2B | B2C
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company Company       @relation(fields: [companyId], references: [id])
+  project Project?      @relation(fields: [projectId], references: [id])
+  lines   InvoiceLine[]
+
+  @@unique([tenantId, number])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal @db.Decimal(10, 3) @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  // Rabat pr. linje (0 = ingen rabat, 100 = 100% rabat)
+  discountPct Decimal @db.Decimal(5, 2)  @default(0)
+  // type: time | product | manual | discount
+  type        String  @default("manual")
+  isCredit    Boolean @default(false)
+  sortOrder   Int     @default(0)
+  timeLogId   String?
+  productId   String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_lines")
+}
+
+// ============================================================
+// NOTIFIKATIONER
+// ============================================================
+
+model Notification {
+  id         String    @id @default(cuid())
+  tenantId   String
+  userId     String
+  // type: bundle_low | bundle_expired | license_expiring | license_expired | ticket_overdue | ticket_assigned
+  type       String
+  title      String
+  message    String    @db.Text
+  isRead     Boolean   @default(false)
+  readAt     DateTime?
+  linkUrl    String?
+  relatedId  String?   // ID på relateret objekt (bundle, license, ticket)
+  createdAt  DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT LOG (compliance: GDPR Art. 30, ISO 27001 A.8.15/A.12.4, SOC 2 CC7.2/CC7.3)
+// Append-only. Ingen UPDATE/DELETE i kode.
+// ============================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String?  // null for super_admin-handlinger på platform-niveau
+  actorId     String?  // bruger-id (kan være null for system-handlinger)
+  actorEmail  String?  // gemmes denormaliseret så det er læseligt efter brugersletning
+  actorRole   String?  // role-snapshot på handlingstidspunktet
+  // action: login_success | login_failed | logout | create | update | delete |
+  //         export | erase | rectify | role_change | password_change | mfa_enable |
+  //         impersonate_start | impersonate_stop | ...
+  action      String
+  // resourceType: user | tenant | company | contact | ticket | role | license | session | api_token | ...
+  resourceType String
+  resourceId  String?  // ID på objekt der blev påvirket
+  // Snapshot før/efter for ændringer (JSON). null for create/delete-typer.
+  before      Json?
+  after       Json?
+  // Sikkerhedskontekst
+  ipAddress   String?
+  userAgent   String?  @db.Text
+  // Resultat: success | failure | denied
+  outcome     String   @default("success")
+  // Fri tekst-besked til kontekst
+  message     String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // Indekser for typiske audit-queries
+  @@index([tenantId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

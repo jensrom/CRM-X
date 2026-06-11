@@ -1,0 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* CRM-X Nordic Design System */
+    --background: 210 40% 98%;      /* #F8FAFC — næsten hvid, nordisk */
+    --foreground: 215 28% 17%;      /* #1E293B */
+
+    --card: 0 0% 100%;              /* #FFFFFF */
+    --card-foreground: 215 28% 17%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 28% 17%;
+
+    --primary: 217 91% 53%;         /* #2563EB — rolig blå */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 40% 96%;       /* #F1F5F9 — lys grå */
+    --secondary-foreground: 215 25% 27%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 20% 45%; /* #64748B */
+
+    --accent: 199 89% 48%;          /* #0EA5E9 — accent blå */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;       /* #EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;          /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --ring: 217 91% 53%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar */
+    --sidebar-bg: 218 30% 13%;      /* #162032 — mørk marineblå */
+    --sidebar-fg: 210 40% 80%;
+    --sidebar-active-bg: 217 91% 53%;
+    --sidebar-active-fg: 0 0% 100%;
+    --sidebar-hover-bg: 218 25% 20%;
+    --sidebar-border: 218 25% 20%;
+    --sidebar-width: 240px;
+    --topbar-height: 56px;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/30;
+  }
+}
+
+@layer utilities {
+  /* Fade-in animation for page content */
+  .animate-in {
+    animation: fade-in 0.2s ease-out;
+  }
+
+  /* Status badge helpers */
+  .status-new      { @apply bg-info/10 text-info border border-info/20; }
+  .status-open     { @apply bg-warning/10 text-warning border border-warning/20; }
+  .status-resolved { @apply bg-success/10 text-success border border-success/20; }
+  .status-closed   { @apply bg-muted text-muted-foreground border border-border; }
+  .status-critical { @apply bg-danger/10 text-danger border border-danger/20; }
+
+  /* Sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium
+           transition-colors duration-150 cursor-pointer select-none;
+  }
+}
