@@ -7,6 +7,11 @@ import { getMyNotifications, getUnreadCount } from "@/app/actions/notifications"
 import { getMyCheckIn, getProjects } from "@/app/actions/projects";
 import { Search } from "lucide-react";
 
+// Alle tenant-pages er dynamiske — læser session + DB pr. request.
+// Forhindrer Next.js i at prøve at prerender ved build-time (fejler uden DB).
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function TenantLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   const session = await auth();
 

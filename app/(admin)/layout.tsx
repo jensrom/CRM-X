@@ -4,6 +4,10 @@ import { redirect } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
+// Admin-pages er dynamiske — læser session + DB.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * Admin group layout — sidebar + topbanner.
  *
