@@ -1,5 +1,6 @@
 import { getLead, updateLead, deleteLead, convertLeadToCompany } from "@/app/actions/leads";
 import { getCampaigns } from "@/app/actions/campaigns";
+import { getLeadActivities } from "@/app/actions/lead-activities";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Target, Trash2, ArrowRight, Building2 } from "lucide-react";
 import { BackButton } from "@/components/shared/BackButton";
+import { LeadActivityTimeline } from "@/components/leads/LeadActivityTimeline";
 
 const STATUSES = [
   { value: "new", label: "Ny" }, { value: "contacted", label: "Kontaktet" },
@@ -26,7 +28,11 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default async function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [lead, campaigns] = await Promise.all([getLead(id), getCampaigns()]);
+  const [lead, campaigns, activities] = await Promise.all([
+    getLead(id),
+    getCampaigns(),
+    getLeadActivities(id),
+  ]);
   if (!lead) notFound();
 
   async function handleDelete() {
@@ -91,7 +97,10 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        <div className="xl:col-span-2">
+        <div className="xl:col-span-2 space-y-5">
+          {/* Aktivitetslog — opkald, møder, opfølgninger, frie noter */}
+          <LeadActivityTimeline leadId={lead.id} activities={activities as any} />
+
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="text-sm font-semibold mb-4">Rediger lead</h3>
             <form action={updateLead} className="space-y-4">

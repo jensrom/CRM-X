@@ -748,8 +748,9 @@ model Lead {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  campaign   Campaign?  @relation(fields: [campaignId], references: [id])
+  activities Activity[] // Aktivitetslog pr. lead (opkald, møder, opfølgninger)
 
   @@map("leads")
 }
@@ -771,6 +772,7 @@ model Activity {
   companyId   String?
   contactId   String?
   dealId      String?
+  leadId      String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -779,7 +781,9 @@ model Activity {
   company Company? @relation(fields: [companyId], references: [id])
   contact Contact? @relation(fields: [contactId], references: [id])
   deal    Deal?    @relation(fields: [dealId], references: [id])
+  lead    Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
+  @@index([leadId])
   @@map("activities")
 }
 

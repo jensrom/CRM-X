@@ -67,6 +67,7 @@ export function NewBundleForm({
 }) {
   const searchParams        = useSearchParams();
   const preselectedId       = searchParams.get("companyId") ?? "";
+  const preselectedProject  = searchParams.get("projectId") ?? "";
   const preselectedCompany  = companies.find((c) => c.id === preselectedId) ?? null;
 
   const [expiresAt, setExpiresAt] = useState("");
@@ -163,6 +164,19 @@ export function NewBundleForm({
           </div>
 
           <form action={createHourBundle} className="space-y-4">
+            {/* Hvis vi kommer fra et projekt, sendes projectId med så klippekortet
+                automatisk tilknyttes projektet ved oprettelse. */}
+            {preselectedProject && (
+              <input type="hidden" name="projectId" value={preselectedProject} />
+            )}
+
+            {preselectedProject && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-800">
+                <span className="font-medium">Tilknyttes projekt</span>
+                <span className="text-emerald-700/80">— klippekortet linkes automatisk efter oprettelse.</span>
+              </div>
+            )}
+
             {/* Firma — søgbar select */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">

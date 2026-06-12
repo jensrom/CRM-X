@@ -78,6 +78,11 @@ export async function getHourBundle(id: string) {
 }
 
 // Opret bundle
+//
+// Hvis projectId er sendt med (typisk når brugeren klikker "Opret klippekort"
+// fra et projekt-detalje-view), opretter vi automatisk en ProjectBundle-link
+// så brugeren ikke skal tilknytte klippekortet manuelt bagefter — og redirecter
+// tilbage til projektet i stedet for til klippekort-detaljen.
 export async function createHourBundle(formData: FormData) {
   const session = await getSession();
   const tenantId = session.user.tenantId!;
@@ -85,6 +90,7 @@ export async function createHourBundle(formData: FormData) {
   const number = await nextBundleNumber(tenantId);
   const price = formData.get("price") as string;
   const expiresAt = formData.get("expiresAt") as string;
+  const projectId = (formData.get("projectId") as string) || null;
 
   const bundle = await db.hourBundle.create({
     data: {
@@ -99,6 +105,32 @@ export async function createHourBundle(formData: FormData) {
       isActive: true,
     },
   });
+
+  // Hvis vi kom fra et projekt: link automatisk klippekortet til projektet.
+  // Vi verificerer ejerskab på tenant + at projektets companyId matcher bundlets.
+  if (projectId) {
+    const project = await db.project.findFirst({
+      where: { id: projectId, tenantId },
+      select: { id: true, companyId: true },
+    });
+
+    if (project && project.companyId === bundle.companyId) {
+      const lastPB = await db.projectBundle.findFirst({
+        where: { projectId },
+        orderBy: { sortOrder: "desc" },
+        select: { sortOrder: true },
+      });
+      const sortOrder = (lastPB?.sortOrder ?? -1) + 1;
+
+      await db.projectBundle.create({
+        data: { tenantId, projectId, bundleId: bundle.id, sortOrder },
+      });
+
+      revalidatePath("/klippekort");
+      revalidatePath(`/projects/${projectId}`);
+      redirect(`/projects/${projectId}`);
+    }
+  }
 
   revalidatePath("/klippekort");
   redirect(`/klippekort/${bundle.id}`);
