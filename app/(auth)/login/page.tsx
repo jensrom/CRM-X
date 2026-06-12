@@ -8,6 +8,15 @@ import { Eye, EyeOff, Loader2, Building2, X } from "lucide-react";
 function detectTenantSlug(): string {
   if (typeof window === "undefined") return "";
   const host = window.location.hostname;
+
+  // Vercel preview/prod-aliaser (fx crm-x-eight.vercel.app) er IKKE tenant-slugs.
+  // Login skal her opføre sig som rod-domænet — workspace vælges manuelt.
+  // Eksplicit check uanset NEXT_PUBLIC_ROOT_DOMAIN, så fejl-konfigureret env
+  // ikke kan låse brugeren ude.
+  if (host.endsWith(".vercel.app")) {
+    return new URLSearchParams(window.location.search).get("tenant") || "";
+  }
+
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "plesnertech.dk";
   // Produktion: sub.plesnertech.dk
   if (host.endsWith(`.${rootDomain}`)) {

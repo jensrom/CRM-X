@@ -27,8 +27,16 @@ export default function middleware(req: NextRequest) {
   // Ekstraher subdomain
   let subdomain: string | null = null;
 
+  // Vercel preview/prod-aliaser (fx crm-x-eight.vercel.app) er IKKE tenant-slugs —
+  // selv hvis NEXT_PUBLIC_ROOT_DOMAIN er fejlagtigt sat til "vercel.app" må vi ikke
+  // tolke deployment-aliasset som en kunde-slug. Behandl som rod-domæne.
+  const isVercelAlias = hostname.endsWith(".vercel.app");
+
   if (isLocalhost) {
     // Lokalt: brug query param ?tenant=xxx for at simulere subdomain
+    subdomain = url.searchParams.get("tenant");
+  } else if (isVercelAlias) {
+    // Vercel-alias → ingen tenant fra hostnavnet. Brug evt. ?tenant=xxx i URL.
     subdomain = url.searchParams.get("tenant");
   } else {
     // Produktion: ekstraher subdomain fra hostname
