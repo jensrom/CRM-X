@@ -122,7 +122,7 @@ export function BundleSearchSelect({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Søg på nummer, navn eller firma…"
+                placeholder="Søg på nummer, navn eller kunde…"
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1"
                 onKeyDown={(e) => {
                   if (e.key === "Escape") setOpen(false);

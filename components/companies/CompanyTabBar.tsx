@@ -2,13 +2,10 @@
 
 /**
  * Tab-bar til kunde-detalje
- * ─────────────────────────
- * Viser horisontal navigation mellem kundens "verdener":
- *   Overblik · Produkter · Licenser · Projekter · Tickets · Klippekort · Fakturaer · Aktivitet
- *
- * Lowkey nordisk: bløde understreger, antal-tællere i bløde toner,
- * scroll-snap til mobil. Tab-state synces til URL'en (?tab=) så hver
- * tab er bookmarkbar og deler-bar.
+ * BEVIDST <a> i stedet for next/link Link:
+ * I App Router med force-dynamic + searchParams-only-href har Link en bug
+ * hvor klik strippe ?tab= og sender brugeren tilbage til base-URL.
+ * Full-navigation via <a> løser det — siden re-rendres alligevel pr. tab.
  */
 
 import { useSearchParams, usePathname } from "next/navigation";
@@ -50,7 +47,6 @@ interface Props {
     fakturaer: number;
     aktivitet: number;
   };
-  /** Hvis sat: pege Links til denne pathname i stedet for at læse usePathname() */
   basePath?: string;
 }
 
@@ -78,15 +74,8 @@ export function CompanyTabBar({ counts, basePath }: Props) {
         {tabs.map((t) => {
           const isActive = activeTab === t.key;
           const Icon = t.icon;
-          // Tab-link bevarer URL-pathnamen men sætter ?tab=<key>.
-          // For "overblik" rydder vi tab-paramen, så URL'en bliver ren.
-          const href =
-            t.key === "overblik" ? path : `${path}?tab=${t.key}`;
+          const href = t.key === "overblik" ? path : `${path}?tab=${t.key}`;
 
-          // BEVIDST <a> i stedet for next/link Link:
-          // I App Router med force-dynamic + searchParams-only-href har Link
-          // en bug hvor klik strippe ?tab= og sender brugeren tilbage til base-URL.
-          // Full-navigation via <a> løser det — siden re-rendres alligevel pr. tab.
           return (
             <a
               key={t.key}

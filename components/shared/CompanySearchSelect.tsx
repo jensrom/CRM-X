@@ -24,7 +24,7 @@ export function CompanySearchSelect({
   name = "companyId",
   required,
   defaultValue,
-  placeholder = "Søg og vælg firma...",
+  placeholder = "Søg og vælg kunde...",
 }: CompanySearchSelectProps) {
   const initial = defaultValue ? companies.find((c) => c.id === defaultValue) ?? null : null;
 
@@ -148,7 +148,7 @@ export function CompanySearchSelect({
               <div className="px-4 py-8 text-center">
                 <Building2 className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
-                  {query ? `Ingen firmaer matcher "${query}"` : "Ingen firmaer tilgaengelige"}
+                  {query ? `Ingen kunder matcher "${query}"` : "Ingen kunder tilgaengelige"}
                 </p>
               </div>
             ) : (
@@ -196,7 +196,7 @@ export function CompanySearchSelect({
           {companies.length > 5 && (
             <div className="px-4 py-2 border-t border-border bg-secondary/20">
               <p className="text-xs text-muted-foreground">
-                {filtered.length === companies.length ? `${companies.length} firmaer` : `${filtered.length} af ${companies.length} firmaer`}
+                {filtered.length === companies.length ? `${companies.length} kunder` : `${filtered.length} af ${companies.length} kunder`}
               </p>
             </div>
           )}

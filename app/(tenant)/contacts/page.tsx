@@ -83,7 +83,7 @@ export default async function ContactsPage({
         <EmptyState
           icon={Users}
           title="Ingen kontakter endnu"
-          description="Opret din første kontakt eller tilknyt én til et firma."
+          description="Opret din første kontakt eller tilknyt én til et kunde."
           action={
             <a href="/contacts/new">
               <Button size="sm"><Plus className="h-3.5 w-3.5" />Opret kontakt</Button>
@@ -96,7 +96,7 @@ export default async function ContactsPage({
             <thead>
               <tr className="border-b border-border bg-secondary/40">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Navn</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Firma</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Kunde</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Kontakt</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Mandat</th>
                 <th className="w-10 px-5 py-3"></th>

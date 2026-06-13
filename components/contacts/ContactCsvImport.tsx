@@ -20,7 +20,7 @@ const CSV_HEADERS = [
   "stilling",
   "linkedin",
   "beslutningsmandat",
-  "firma",
+  "kunde",
   "noter",
 ];
 
@@ -37,7 +37,7 @@ const DECISION_ROLE_MAP: Record<string, string> = {
 };
 
 const EXAMPLE_ROWS = [
-  ["Lars", "Larsen", "lars@firma.dk", "+45 12 34 56 78", "+45 87 65 43 21", "IT-chef", "https://linkedin.com/in/lars", "beslutningstagere", "Acme A/S", "Nøglekontakt"],
+  ["Lars", "Larsen", "lars@kunde.dk", "+45 12 34 56 78", "+45 87 65 43 21", "IT-chef", "https://linkedin.com/in/lars", "beslutningstagere", "Acme A/S", "Nøglekontakt"],
   ["Mette", "Madsen", "mette@beta.dk", "+45 23 45 67 89", "", "Indkøbsansvarlig", "", "budgetansvarlig", "Beta ApS", ""],
 ];
 
@@ -99,7 +99,7 @@ function mapRow(row: Record<string, string>): PreviewRow {
     title:        row["stilling"] || row["title"] || "",
     linkedInUrl:  row["linkedin"] || row["linkedinurl"] || "",
     decisionRole,
-    companyName:  row["firma"] || row["company"] || "",
+    companyName:  row["kunde"] || row["company"] || "",
     notes:        row["noter"] || row["notes"] || "",
   };
 }
@@ -148,7 +148,7 @@ export function ContactCsvImport({ companies }: Props) {
   const validRows = preview.filter((r) => !r._error && r.firstName && r.lastName);
   const errorRows = preview.filter((r) => r._error);
 
-  // Firmanavne der ikke matcher eksisterende firmaer
+  // Kundenavne der ikke matcher eksisterende kunder
   const unknownCompanies = [...new Set(
     validRows
       .filter((r) => r.companyName && !companies.find((c) => c.name.toLowerCase() === r.companyName!.toLowerCase()))
@@ -176,7 +176,7 @@ export function ContactCsvImport({ companies }: Props) {
           <div>
             <h2 className="text-lg font-semibold mb-1">CSV-import af kontakter</h2>
             <p className="text-sm text-muted-foreground">
-              Importer kontakter og tilknyt dem automatisk til eksisterende firmaer via firmanavnet.
+              Importer kontakter og tilknyt dem automatisk til eksisterende kunder via kundenavnet.
             </p>
           </div>
           <Button variant="ghost" size="sm" onClick={downloadTemplate}>
@@ -210,14 +210,14 @@ export function ContactCsvImport({ companies }: Props) {
         </div>
       )}
 
-      {/* Advarsel: ukendte firmanavne */}
+      {/* Advarsel: ukendte kundenavne */}
       {unknownCompanies.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
           <p className="text-sm text-amber-800 dark:text-amber-300 font-medium mb-1">
-            {unknownCompanies.length} firmanavne fundet ikke i systemet
+            {unknownCompanies.length} kundenavne fundet ikke i systemet
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-400 mb-2">
-            Disse kontakter importeres uden firmatilknytning. Opret firmaerne først, eller ret navnene i CSV-filen.
+            Disse kontakter importeres uden kundetilknytning. Opret kunderne først, eller ret navnene i CSV-filen.
           </p>
           <div className="flex flex-wrap gap-1.5">
             {unknownCompanies.map((n) => (
@@ -255,7 +255,7 @@ export function ContactCsvImport({ companies }: Props) {
                   <th className="text-left px-4 py-2.5 hidden sm:table-cell">Email</th>
                   <th className="text-left px-4 py-2.5 hidden md:table-cell">Telefon</th>
                   <th className="text-left px-4 py-2.5 hidden lg:table-cell">Stilling</th>
-                  <th className="text-left px-4 py-2.5 hidden lg:table-cell">Firma</th>
+                  <th className="text-left px-4 py-2.5 hidden lg:table-cell">Kunde</th>
                   <th className="text-left px-4 py-2.5 hidden xl:table-cell">Mandat</th>
                   <th className="text-left px-4 py-2.5">Status</th>
                 </tr>

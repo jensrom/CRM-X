@@ -20,7 +20,7 @@ const SUBPROCESSORS: SubProcessor[] = [
   {
     name: "Neon",
     service: "PostgreSQL hosting — primær database for alle tenant-data",
-    dataCategories: "Alle tenant-data (firmaer, kontakter, tickets, projekter, fakturaer, audit-log)",
+    dataCategories: "Alle tenant-data (kunder, kontakter, tickets, projekter, fakturaer, audit-log)",
     location: "EU — Frankfurt (eu-central-1)",
     certifications: ["SOC 2 Type II", "ISO 27001"],
     website: "https://neon.tech",

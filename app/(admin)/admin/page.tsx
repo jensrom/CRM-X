@@ -136,7 +136,7 @@ export default async function AdminDashboardPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-secondary/30 border-b border-border text-xs text-muted-foreground">
-                <th className="text-left px-5 py-2.5 font-semibold">Firma</th>
+                <th className="text-left px-5 py-2.5 font-semibold">Kunde</th>
                 <th className="text-left px-5 py-2.5 font-semibold">Plan</th>
                 <th className="text-right px-5 py-2.5 font-semibold">Brugere</th>
                 <th className="text-left px-5 py-2.5 font-semibold">Oprettet</th>

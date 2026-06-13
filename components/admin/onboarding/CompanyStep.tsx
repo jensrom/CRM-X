@@ -29,7 +29,7 @@ function slugify(name: string): string {
 export function CompanyStep({ state, update, onNext }: Props) {
   const [touched, setTouched] = useState(false);
 
-  // Auto-foreslå slug fra firmanavn indtil brugeren rører feltet
+  // Auto-foreslå slug fra kundenavn indtil brugeren rører feltet
   useEffect(() => {
     if (!touched && state.name) {
       update("slug", slugify(state.name));
@@ -48,7 +48,7 @@ export function CompanyStep({ state, update, onNext }: Props) {
             <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="font-semibold">Firma-stamdata</h2>
+            <h2 className="font-semibold">Kunde-stamdata</h2>
             <p className="text-xs text-muted-foreground">Kundens grunddata. Adressen bruges på fakturaer.</p>
           </div>
         </div>
@@ -57,7 +57,7 @@ export function CompanyStep({ state, update, onNext }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <Input
-            label="Firmanavn *"
+            label="Kundenavn *"
             placeholder="Acme Consulting A/S"
             value={state.name}
             onChange={(e) => update("name", e.target.value)}
@@ -88,7 +88,7 @@ export function CompanyStep({ state, update, onNext }: Props) {
             </div>
           </div>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Auto-foreslået fra firmanavn. Kan ikke ændres efter oprettelse.
+            Auto-foreslået fra kundenavn. Kan ikke ændres efter oprettelse.
           </p>
         </div>
 

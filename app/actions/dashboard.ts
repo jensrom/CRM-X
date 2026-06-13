@@ -41,7 +41,7 @@ export async function getDashboardData() {
     recentProjects,
     recentTimeLogs,
   ] = await Promise.all([
-    // Firmaer
+    // Kunder
     db.company.count({ where: { tenantId, isActive: true } }),
 
     // Tickets pr. status

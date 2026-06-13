@@ -144,7 +144,7 @@ export default async function DashboardPage() {
 
         {/* KPI */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-          <KpiCard label="Aktive firmaer" value={d.companiesCount} icon={Building2} color="primary" href="/companies" />
+          <KpiCard label="Aktive kunder" value={d.companiesCount} icon={Building2} color="primary" href="/companies" />
           {hasSupport && (
             <KpiCard label="Åbne tickets" value={d.openTickets} sub={d.criticalTickets > 0 ? `${d.criticalTickets} kritiske` : "Alt roligt"}
               icon={Ticket} color={d.criticalTickets > 0 ? "rose" : "amber"} href="/support/tickets" alert={d.criticalTickets > 0} />
@@ -340,11 +340,11 @@ export default async function DashboardPage() {
           <div className="bg-card border border-border rounded-xl p-10 text-center">
             <Building2 className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-sm font-medium mb-1">Kom i gang med CRM-X</p>
-            <p className="text-xs text-muted-foreground mb-4">Start med at oprette dit første firma</p>
+            <p className="text-xs text-muted-foreground mb-4">Start med at oprette dit første kunde</p>
             <div className="flex items-center justify-center gap-3">
               <Link href="/companies/new"
                 className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
-                Opret firma
+                Opret kunde
               </Link>
             </div>
           </div>

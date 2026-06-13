@@ -42,11 +42,11 @@ export default async function NewLeadPage() {
               <Input name="lastName" label="Efternavn" required placeholder="Hansen" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input name="email" label="E-mail" type="email" placeholder="a@firma.dk" />
+              <Input name="email" label="E-mail" type="email" placeholder="a@kunde.dk" />
               <Input name="phone" label="Telefon" placeholder="+45 12 34 56 78" />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Input name="company" label="Firma" placeholder="Firma A/S" />
+              <Input name="company" label="Kunde" placeholder="Kunde A/S" />
               <Input name="jobTitle" label="Jobtitel" placeholder="Indkobschef" />
             </div>
             <div className="grid grid-cols-2 gap-4">

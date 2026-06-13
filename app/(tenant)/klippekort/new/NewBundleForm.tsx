@@ -177,17 +177,17 @@ export function NewBundleForm({
               </div>
             )}
 
-            {/* Firma — søgbar select */}
+            {/* Kunde — søgbar select */}
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">
-                Firma <span className="text-destructive">*</span>
+                Kunde <span className="text-destructive">*</span>
               </label>
               <CompanySearchSelect
                 companies={companies}
                 name="companyId"
                 required
                 defaultValue={preselectedId}
-                placeholder="Søg og vælg firma…"
+                placeholder="Søg og vælg kunde…"
               />
             </div>
 

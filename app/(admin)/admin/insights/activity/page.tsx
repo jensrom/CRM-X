@@ -69,7 +69,7 @@ export default async function AdminInsightsActivityPage() {
       {/* KPI */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Kpi label="Logins sidste 7d" value={loginsLast7d} sub={`${loginsLast30d} sidste 30d`} icon={LogIn} color="bg-blue-500/10 text-blue-600" />
-        <Kpi label="Oprettelser sidste 7d" value={creationsLast7d} sub="firma, ticket, kontakt..." icon={UserPlus} color="bg-emerald-500/10 text-emerald-600" />
+        <Kpi label="Oprettelser sidste 7d" value={creationsLast7d} sub="kunde, ticket, kontakt..." icon={UserPlus} color="bg-emerald-500/10 text-emerald-600" />
         <Kpi label="Fejlede logins" value={failedLoginsLast7d} sub="Sidste 7d — overvåg" icon={Activity} color={failedLoginsLast7d > 10 ? "bg-rose-500/10 text-rose-600" : "bg-amber-500/10 text-amber-600"} />
         <Kpi label="Aktive tenants" value={activeTenants} sub="Med login sidste 30d" icon={TrendingUp} color="bg-violet-500/10 text-violet-600" />
       </div>

@@ -139,7 +139,7 @@ export default async function KlippekortPage() {
                 <tr className="border-b border-border bg-secondary/30 text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="text-left px-4 py-3 font-semibold w-20">Ref</th>
                   <th className="text-left px-4 py-3 font-semibold">Klippekort</th>
-                  <th className="text-left px-4 py-3 font-semibold">Firma</th>
+                  <th className="text-left px-4 py-3 font-semibold">Kunde</th>
                   <th className="text-right px-4 py-3 font-semibold w-20 hidden sm:table-cell">Købt</th>
                   <th className="text-right px-4 py-3 font-semibold w-20 hidden sm:table-cell">Brugt</th>
                   <th className="text-right px-4 py-3 font-semibold w-20 hidden md:table-cell">Resterende</th>

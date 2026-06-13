@@ -51,7 +51,7 @@ const NAV_SECTIONS: {
   {
     section: "Kunder",
     items: [
-      { label: "Firmaer", href: "/companies", icon: Building2 },
+      { label: "Kunder", href: "/companies", icon: Building2 },
       { label: "Kontakter", href: "/contacts", icon: Users },
     ],
   },

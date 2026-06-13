@@ -45,7 +45,7 @@ export function ConfirmStep({ state, update, currency, onPrev, onSubmit, isSubmi
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-secondary/30 rounded-xl p-4">
           <p className="text-[11px] text-muted-foreground uppercase tracking-wide font-semibold mb-2">
-            Firma
+            Kunde
           </p>
           <Row label="Navn" value={state.name} />
           <Row label="Subdomain" value={<code className="font-mono text-xs">{state.slug}.plesnertech.dk</code>} />

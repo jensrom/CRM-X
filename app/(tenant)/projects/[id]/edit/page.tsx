@@ -125,7 +125,7 @@ export default async function EditProjectPage({ params }: { params: Promise<{ id
 
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">
-                Firma <span className="text-destructive">*</span>
+                Kunde <span className="text-destructive">*</span>
               </label>
               <select
                 name="companyId"

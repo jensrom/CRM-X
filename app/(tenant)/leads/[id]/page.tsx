@@ -82,15 +82,15 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               <form action={convertLeadToCompany} className="mt-4">
                 <input type="hidden" name="leadId" value={lead.id} />
                 <Button type="submit" size="sm" className="w-full">
-                  <ArrowRight className="h-3.5 w-3.5" /> Konverter til firma
+                  <ArrowRight className="h-3.5 w-3.5" /> Konverter til kunde
                 </Button>
               </form>
             )}
             {isConverted && lead.convertedCompanyId && (
               <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                <p className="text-xs text-emerald-700 font-medium">Konverteret til firma</p>
+                <p className="text-xs text-emerald-700 font-medium">Konverteret til kunde</p>
                 <Link href={`/companies/${lead.convertedCompanyId}`} className="text-xs text-emerald-600 hover:underline">
-                  Se firma
+                  Se kunde
                 </Link>
               </div>
             )}
@@ -114,7 +114,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 <Input name="phone" label="Telefon" defaultValue={lead.phone ?? ""} />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <Input name="company" label="Firma" defaultValue={lead.company ?? ""} />
+                <Input name="company" label="Kunde" defaultValue={lead.company ?? ""} />
                 <Input name="jobTitle" label="Jobtitel" defaultValue={lead.jobTitle ?? ""} />
               </div>
               <div className="grid grid-cols-2 gap-4">

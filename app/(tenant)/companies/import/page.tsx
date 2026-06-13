@@ -5,8 +5,8 @@ import { CompanyCsvImport } from "@/components/companies/CompanyCsvImport";
 export default function ImportCompaniesPage() {
   return (
     <>
-      <AppTopbar pageTitle="Importer firmaer" />
-      <BackButton href="/companies" label="Firmaer" />
+      <AppTopbar pageTitle="Importer kunder" />
+      <BackButton href="/companies" label="Kunder" />
       <CompanyCsvImport />
     </>
   );

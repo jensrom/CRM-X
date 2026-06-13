@@ -105,7 +105,7 @@ export default async function ProjectsPage({
                 <tr className="border-b border-border bg-secondary/30 text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="text-left px-4 py-3 font-semibold w-20">Ref</th>
                   <th className="text-left px-4 py-3 font-semibold">Projekt</th>
-                  <th className="text-left px-4 py-3 font-semibold">Firma</th>
+                  <th className="text-left px-4 py-3 font-semibold">Kunde</th>
                   <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Projektleder</th>
                   <th className="text-left px-4 py-3 font-semibold w-28 hidden lg:table-cell">Deadline</th>
                   <th className="text-left px-4 py-3 font-semibold w-44 hidden xl:table-cell">Klippekort</th>

@@ -50,7 +50,7 @@ export default async function NewContactPage({
             <div className="grid grid-cols-2 gap-4">
               <Input name="firstName" label="Fornavn *" placeholder="Lars" required />
               <Input name="lastName" label="Efternavn *" placeholder="Larsen" required />
-              <Input name="email" label="Email *" type="email" placeholder="lars@firma.dk" required />
+              <Input name="email" label="Email *" type="email" placeholder="lars@kunde.dk" required />
               <Input name="phone" label="Telefon *" placeholder="+45 12 34 56 78" required />
               <div className="col-span-2 space-y-1.5">
                 <label className="block text-sm font-medium text-foreground">
@@ -97,14 +97,14 @@ export default async function NewContactPage({
           <div className="bg-card border border-border rounded-xl p-5 space-y-4">
             <h3 className="text-sm font-semibold">Tilknytning</h3>
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-foreground">Firma</label>
+              <label className="block text-sm font-medium text-foreground">Kunde</label>
               <select
                 name="companyId"
                 defaultValue={sp.companyId || ""}
                 className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm
                            focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">Vaelg firma (valgfrit)</option>
+                <option value="">Vaelg kunde (valgfrit)</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}

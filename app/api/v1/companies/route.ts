@@ -5,7 +5,7 @@
  * Kræver Bearer-token (oprettes under Indstillinger → API).
  *
  * Returnerer 401 hvis token mangler/ugyldig.
- * Returnerer 200 med JSON-array af firmaer ved succes.
+ * Returnerer 200 med JSON-array af kunder ved succes.
  */
 
 import { NextResponse } from "next/server";

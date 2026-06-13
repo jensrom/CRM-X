@@ -96,7 +96,7 @@ export async function convertLeadToCompany(formData: FormData) {
   });
   if (!lead) throw new Error("Lead ikke fundet");
 
-  // Opret firma fra lead
+  // Opret kunde fra lead
   const company = await db.company.create({
     data: {
       tenantId: session.user.tenantId!,

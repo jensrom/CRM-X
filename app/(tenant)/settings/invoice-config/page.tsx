@@ -52,8 +52,8 @@ export default async function InvoiceConfigPage() {
             </h3>
             <Input
               name="invoiceCompanyName"
-              label="Firmanavn på faktura"
-              placeholder={t.name ?? "Dit firma A/S"}
+              label="Kundenavn på faktura"
+              placeholder={t.name ?? "Dit kunde A/S"}
               defaultValue={t.invoiceCompanyName ?? ""}
             />
             <Input

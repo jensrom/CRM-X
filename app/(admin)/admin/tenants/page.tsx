@@ -108,11 +108,11 @@ export default async function AdminTenantsListPage({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-secondary/30 text-xs text-muted-foreground">
-                <th className="text-left px-5 py-3 font-semibold">Firma</th>
+                <th className="text-left px-5 py-3 font-semibold">Kunde</th>
                 <th className="text-left px-5 py-3 font-semibold">Plan</th>
                 <th className="text-left px-5 py-3 font-semibold hidden md:table-cell">Moduler</th>
                 <th className="text-right px-5 py-3 font-semibold hidden sm:table-cell">Brugere</th>
-                <th className="text-right px-5 py-3 font-semibold hidden lg:table-cell">Firmaer</th>
+                <th className="text-right px-5 py-3 font-semibold hidden lg:table-cell">Kunder</th>
                 <th className="text-left px-5 py-3 font-semibold">Status</th>
                 <th className="text-left px-5 py-3 font-semibold hidden xl:table-cell">Oprettet</th>
                 <th className="w-12 px-5 py-3"></th>

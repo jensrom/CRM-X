@@ -41,7 +41,7 @@ export default async function EditTicketPage({ params }: { params: Promise<{ id:
       : Promise.resolve([]),
   ]);
 
-  // Kontakter til det aktuelt tilknyttede firma
+  // Kontakter til det aktuelt tilknyttede kunde
   const contacts = ticket.company
     ? await db.contact.findMany({
         where: { companyId: ticket.company.id, isActive: true },
@@ -136,7 +136,7 @@ export default async function EditTicketPage({ params }: { params: Promise<{ id:
 
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">
-                Firma <span className="text-destructive">*</span>
+                Kunde <span className="text-destructive">*</span>
               </label>
               <select
                 name="companyId"
@@ -145,7 +145,7 @@ export default async function EditTicketPage({ params }: { params: Promise<{ id:
                 className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm
                            focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                <option value="">— Vælg firma —</option>
+                <option value="">— Vælg kunde —</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}

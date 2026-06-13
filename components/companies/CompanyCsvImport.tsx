@@ -62,7 +62,7 @@ function downloadTemplate() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "firma-import-skabelon.csv";
+  a.download = "kunde-import-skabelon.csv";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -104,8 +104,8 @@ interface PreviewRow {
 }
 
 function mapRow(row: Record<string, string>): PreviewRow {
-  const name = row["navn"] || row["name"] || row["firmanavn"] || "";
-  if (!name) return { name: "", _error: "Firmanavn mangler" };
+  const name = row["navn"] || row["name"] || row["kundenavn"] || "";
+  if (!name) return { name: "", _error: "Kundenavn mangler" };
 
   return {
     name,
@@ -179,9 +179,9 @@ export function CompanyCsvImport() {
       <div className="bg-card border border-border rounded-xl p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold mb-1">CSV-import af firmaer</h2>
+            <h2 className="text-lg font-semibold mb-1">CSV-import af kunder</h2>
             <p className="text-sm text-muted-foreground">
-              Importer firmaer fra en semikolon- eller kommasepareret CSV-fil.
+              Importer kunder fra en semikolon- eller kommasepareret CSV-fil.
               Download skabelonen for at se det forventede format.
             </p>
           </div>
@@ -242,7 +242,7 @@ export function CompanyCsvImport() {
               <thead>
                 <tr className="border-b border-border text-xs text-muted-foreground bg-secondary/20">
                   <th className="text-left px-4 py-2.5">#</th>
-                  <th className="text-left px-4 py-2.5">Firmanavn</th>
+                  <th className="text-left px-4 py-2.5">Kundenavn</th>
                   <th className="text-left px-4 py-2.5 hidden sm:table-cell">CVR</th>
                   <th className="text-left px-4 py-2.5 hidden md:table-cell">Email</th>
                   <th className="text-left px-4 py-2.5 hidden lg:table-cell">Fakturamail</th>
@@ -292,12 +292,12 @@ export function CompanyCsvImport() {
               <div className={`flex items-center gap-2 text-sm ${result.ok > 0 ? "text-emerald-600" : "text-destructive"}`}>
                 {result.ok > 0 ? <CheckCircle2 className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                 {result.ok > 0
-                  ? `${result.ok} firmaer importeret! Omdirigerer...`
+                  ? `${result.ok} kunder importeret! Omdirigerer...`
                   : result.errors.join(", ")}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                {validRows.length} firma{validRows.length !== 1 ? "er" : ""} klar til import
+                {validRows.length} kunde{validRows.length !== 1 ? "er" : ""} klar til import
                 {errorRows.length > 0 && ` · ${errorRows.length} rækker springes over`}
               </p>
             )}
@@ -310,7 +310,7 @@ export function CompanyCsvImport() {
               {importing ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Importerer...</>
               ) : (
-                <><Building2 className="h-3.5 w-3.5" /> Importer {validRows.length} firmaer</>
+                <><Building2 className="h-3.5 w-3.5" /> Importer {validRows.length} kunder</>
               )}
             </Button>
           </div>

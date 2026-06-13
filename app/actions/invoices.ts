@@ -204,7 +204,7 @@ export async function createInvoice(formData: FormData) {
   const customerType = (formData.get("customerType") as string) || "B2B";
   const vatEnabled = formData.get("vatEnabled") !== "false"; // default true
 
-  if (!companyId) throw new Error("Firma er påkrævet");
+  if (!companyId) throw new Error("Kunde er påkrævet");
 
   // B2B kræver CVR (jf. dansk faktura-standard) — advarsel hvis mangler
   if (customerType === "B2B") {
@@ -214,7 +214,7 @@ export async function createInvoice(formData: FormData) {
     });
     if (!company?.orgNumber) {
       throw new Error(
-        "B2B-fakturær kræver kundens CVR-nummer. Tilføj CVR på firmaet først, eller skift til B2C."
+        "B2B-fakturær kræver kundens CVR-nummer. Tilføj CVR på kunden først, eller skift til B2C."
       );
     }
   }

@@ -19,7 +19,7 @@ import type { Currency, PlanSlug } from "@/lib/plans";
  * sessionStorage senere.
  */
 export interface WizardState {
-  // Trin 1 — Firma
+  // Trin 1 — Kunde
   name: string;
   slug: string;
   cvr: string;
@@ -78,7 +78,7 @@ const initialState: WizardState = {
 };
 
 const STEPS: StepDefinition[] = [
-  { id: "company", label: "Firma", description: "Stamdata" },
+  { id: "company", label: "Kunde", description: "Stamdata" },
   { id: "admin", label: "Admin", description: "Kontaktperson" },
   { id: "plan", label: "Plan", description: "Pakke & licenser" },
   { id: "branding", label: "Branding", description: "Logo & farver", optional: true },

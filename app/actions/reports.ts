@@ -59,7 +59,7 @@ export async function getReportsData(opts?: { year?: number; month?: number }) {
     ticketsClosedThisMonth,
     // Klippekort aktive
     activeBundles,
-    // Top firmaer efter timer
+    // Top kunder efter timer
     topCompaniesTime,
   ] = await Promise.all([
     db.deal.aggregate({
@@ -136,7 +136,7 @@ export async function getReportsData(opts?: { year?: number; month?: number }) {
   });
   const userMap = Object.fromEntries(users.map((u) => [u.id, u.name ?? u.id]));
 
-  // Opslag: projectId → titel + firma
+  // Opslag: projectId → titel + kunde
   const projectIds = topCompaniesTime.map((t) => t.projectId).filter(Boolean) as string[];
   const projectsInfo = await db.project.findMany({
     where: { id: { in: projectIds } },

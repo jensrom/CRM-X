@@ -79,7 +79,7 @@ export async function importContactsFromCsv(
     title?: string;
     linkedInUrl?: string;
     decisionRole?: string;
-    companyName?: string; // bruges til firma-opslag
+    companyName?: string; // bruges til kunde-opslag
     notes?: string;
   }[]
 ): Promise<{ ok: number; errors: string[] }> {
@@ -87,7 +87,7 @@ export async function importContactsFromCsv(
   if (!session?.user?.tenantId) throw new Error("Ikke autoriseret");
   const tenantId = session.user.tenantId;
 
-  // Byg firma-opslag én gang
+  // Byg kunde-opslag én gang
   const allCompanies = await db.company.findMany({
     where: { tenantId, isActive: true },
     select: { id: true, name: true },

@@ -80,7 +80,7 @@ export async function GET(
     action: "export",
     resourceType: "tenant",
     resourceId: tenant.id,
-    message: `Fuld tenant-data eksporteret som JSON (${tenant.users.length} brugere, ${tenant.companies.length} firmaer, ${tenant.tickets.length} tickets)`,
+    message: `Fuld tenant-data eksporteret som JSON (${tenant.users.length} brugere, ${tenant.companies.length} kunder, ${tenant.tickets.length} tickets)`,
   });
 
   // Audit-log er ikke inkluderet i selve dumpet (det er meta-data om eksporten),

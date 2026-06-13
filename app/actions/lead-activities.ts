@@ -8,7 +8,7 @@
  *   • valgfri due-date (fx "vi følger op i morgen")
  *   • brugeren bag aktiviteten + tidsstempel
  *
- * Data ligger i den eksisterende Activity-tabel (samme model bruges af firma-
+ * Data ligger i den eksisterende Activity-tabel (samme model bruges af kunde-
  * og kontakt-aktiviteter). Vi tilføjer kun et leadId-felt og en relation —
  * det giver os ét konsistent UI-pattern på tværs af CRM'et.
  */

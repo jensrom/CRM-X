@@ -18,11 +18,11 @@ export default async function CompaniesPage({
 
   return (
     <>
-      <AppTopbar pageTitle="Firmaer" />
+      <AppTopbar pageTitle="Kunder" />
 
       <PageHeader
-        title="Firmaer"
-        description={`${companies.length} aktive firmaer`}
+        title="Kunder"
+        description={`${companies.length} aktive kunder`}
         actions={
           <div className="flex items-center gap-2">
             <Link href="/companies/import">
@@ -34,7 +34,7 @@ export default async function CompaniesPage({
             <a href="/companies/new">
               <Button size="md">
                 <Plus className="h-4 w-4" />
-                Opret firma
+                Opret kunde
               </Button>
             </a>
           </div>
@@ -46,7 +46,7 @@ export default async function CompaniesPage({
         <input
           name="search"
           defaultValue={sp.search}
-          placeholder="Søg efter firma..."
+          placeholder="Søg efter kunde..."
           className="w-full max-w-sm px-3 py-2 rounded-lg border border-input bg-background text-sm
                      placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
@@ -56,11 +56,11 @@ export default async function CompaniesPage({
       {companies.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="Ingen firmaer endnu"
-          description="Opret dit første firma for at komme i gang."
+          title="Ingen kunder endnu"
+          description="Opret dit første kunde for at komme i gang."
           action={
             <a href="/companies/new">
-              <Button size="sm"><Plus className="h-3.5 w-3.5" />Opret firma</Button>
+              <Button size="sm"><Plus className="h-3.5 w-3.5" />Opret kunde</Button>
             </a>
           }
         />
@@ -69,7 +69,7 @@ export default async function CompaniesPage({
           <table className="w-full">
             <thead>
               <tr className="border-b border-border bg-secondary/40">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Firma</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kunde</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">By</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Kontakt</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Produkter</th>

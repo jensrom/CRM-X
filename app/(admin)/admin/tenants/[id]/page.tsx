@@ -73,7 +73,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             { label: "Brugere", value: `${tenant.users.length}/${tenant.maxUsers}`, icon: Users },
-            { label: "Firmaer", value: tenant._count.companies, icon: Building2 },
+            { label: "Kunder", value: tenant._count.companies, icon: Building2 },
             { label: "Tickets", value: tenant._count.tickets, icon: Settings },
             { label: "Projekter", value: tenant._count.projects, icon: CheckCircle2 },
           ].map((s) => (
@@ -98,7 +98,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
                 <input type="hidden" name="id" value={tenant.id} />
 
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium">Firmanavn</label>
+                  <label className="block text-sm font-medium">Kundenavn</label>
                   <input name="name" defaultValue={tenant.name} required
                     className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>

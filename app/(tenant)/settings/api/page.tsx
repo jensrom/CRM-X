@@ -96,7 +96,7 @@ export default async function ApiSettingsPage() {
             </div>
 
             <div>
-              <p className="text-xs font-mono text-muted-foreground mb-1.5 uppercase">Eksempel — hent firmaer</p>
+              <p className="text-xs font-mono text-muted-foreground mb-1.5 uppercase">Eksempel — hent kunder</p>
               <div className="bg-secondary rounded-lg p-3 font-mono text-xs overflow-x-auto whitespace-pre">
 {`curl -X GET \\
   https://{tenant}.plesnertech.dk/api/v1/companies \\
@@ -107,11 +107,11 @@ export default async function ApiSettingsPage() {
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               {[
-                { method: "GET",    endpoint: "/api/v1/companies",     desc: "List firmaer" },
+                { method: "GET",    endpoint: "/api/v1/companies",     desc: "List kunder" },
                 { method: "GET",    endpoint: "/api/v1/contacts",      desc: "List kontakter" },
                 { method: "GET",    endpoint: "/api/v1/invoices",      desc: "List fakturaer" },
                 { method: "GET",    endpoint: "/api/v1/projects",      desc: "List projekter" },
-                { method: "POST",   endpoint: "/api/v1/companies",     desc: "Opret firma" },
+                { method: "POST",   endpoint: "/api/v1/companies",     desc: "Opret kunde" },
                 { method: "POST",   endpoint: "/api/v1/invoices",      desc: "Opret faktura" },
               ].map((r) => (
                 <div key={r.endpoint} className="flex items-start gap-2 p-2.5 bg-secondary/60 rounded-lg">

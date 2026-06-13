@@ -291,7 +291,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           {/* Tilknyt til kunde */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-              <Plus className="h-4 w-4 text-muted-foreground" /> Tilknyt til firma
+              <Plus className="h-4 w-4 text-muted-foreground" /> Tilknyt til kunde
             </h3>
 
             <form action={assignProductToCompany} className="space-y-3">
@@ -299,14 +299,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-foreground">Firma</label>
+                  <label className="block text-sm font-medium text-foreground">Kunde</label>
                   <select
                     name="companyId"
                     required
                     className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm
                                focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="">— Vælg firma —</option>
+                    <option value="">— Vælg kunde —</option>
                     {companies.map((c) => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -335,7 +335,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <div className="pt-1">
                 <Button type="submit" size="sm">
                   <Plus className="h-3.5 w-3.5" />
-                  Tilknyt produkt til firma
+                  Tilknyt produkt til kunde
                 </Button>
               </div>
             </form>
