@@ -11,7 +11,6 @@
  * tab er bookmarkbar og deler-bar.
  */
 
-import Link from "next/link";
 import { useSearchParams, usePathname } from "next/navigation";
 import {
   Eye,
@@ -84,11 +83,14 @@ export function CompanyTabBar({ counts, basePath }: Props) {
           const href =
             t.key === "overblik" ? path : `${path}?tab=${t.key}`;
 
+          // BEVIDST <a> i stedet for next/link Link:
+          // I App Router med force-dynamic + searchParams-only-href har Link
+          // en bug hvor klik strippe ?tab= og sender brugeren tilbage til base-URL.
+          // Full-navigation via <a> løser det — siden re-rendres alligevel pr. tab.
           return (
-            <Link
+            <a
               key={t.key}
               href={href}
-              scroll={false}
               className={`relative flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
                 isActive
                   ? "text-foreground"
@@ -111,7 +113,7 @@ export function CompanyTabBar({ counts, basePath }: Props) {
               {isActive && (
                 <span className="absolute inset-x-2 -bottom-px h-0.5 bg-primary rounded-full" />
               )}
-            </Link>
+            </a>
           );
         })}
       </nav>
