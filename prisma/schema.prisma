@@ -378,6 +378,10 @@ model Product {
   // (synkroniseret med lib/product-types.ts — single source of truth i kode)
   type        String   @default("other")
   category    String?
+  // Pris-model afgør hvordan totaler beregnes når produktet tilknyttes en kunde:
+  //   "per_unit"             — fast pris pr. enhed (klassisk: pris × antal)
+  //   "per_user_per_period"  — SaaS-style: pris pr. bruger pr. interval (× pladser × periode)
+  pricingMode String   @default("per_unit")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -415,6 +419,18 @@ model CustomerProduct {
   productId    String
   managerId    String?  // Contact: afdelingsleder/ansvarlig
   pricingId    String?
+  // SaaS-pladser / antal stk
+  //   • per_unit-produkter:        seats = antal købte enheder
+  //   • per_user_per_period:       seats = antal SaaS-brugere/licenser
+  seats        Int      @default(1)
+  // Pris-interval (hvad prisen er sat pr. — fx pr. md for SaaS pr. bruger)
+  //   monthly | quarterly | biannual | annual | onetime
+  pricingInterval  String  @default("monthly")
+  // Faktureringsinterval — kan adskille sig fra prisIntervallet.
+  //   Eksempel: SaaS pris pr. bruger pr. MÅNED, men faktureres ÅRLIGT
+  //   → pricingInterval=monthly, billingInterval=annual
+  //   → faktura-total = pris × seats × 12
+  billingInterval  String  @default("monthly")
   startDate    DateTime @default(now())
   endDate      DateTime?
   notes        String?

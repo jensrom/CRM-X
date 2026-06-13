@@ -193,12 +193,21 @@ export async function upsertPricing(formData: FormData) {
 export async function assignProductToCompany(formData: FormData) {
   const session = await getSession();
 
+  // Læs SaaS-felter med fornuftige defaults så gamle formularer (uden seats/intervaller) stadig virker
+  const seatsRaw = formData.get("seats") as string;
+  const seats = seatsRaw ? Math.max(1, parseInt(seatsRaw) || 1) : 1;
+  const pricingInterval = (formData.get("pricingInterval") as string) || "monthly";
+  const billingInterval = (formData.get("billingInterval") as string) || "monthly";
+
   await db.customerProduct.create({
     data: {
       tenantId: session.user.tenantId!,
       companyId: formData.get("companyId") as string,
       productId: formData.get("productId") as string,
       pricingId: (formData.get("pricingId") as string) || null,
+      seats,
+      pricingInterval,
+      billingInterval,
       notes: (formData.get("notes") as string) || null,
       startDate: formData.get("startDate")
         ? new Date(formData.get("startDate") as string)

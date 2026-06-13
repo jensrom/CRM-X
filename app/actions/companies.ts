@@ -179,3 +179,104 @@ export async function getCompany(id: string) {
     },
   });
 }
+
+
+/**
+ * Komplet kunde-detalje med ALT data til tab-bar'en.
+ *
+ * Henter både aktive og inaktive ressourcer så hver tab kan skille
+ * dem ad visuelt. Tunge listinger er beskåret med fornuftige takes.
+ */
+export async function getCompanyFull(id: string) {
+  const session = await auth();
+  if (!session?.user?.tenantId) return null;
+  const tenantId = session.user.tenantId;
+
+  return db.company.findFirst({
+    where: { id, tenantId },
+    include: {
+      contacts: { where: { isActive: true }, orderBy: { firstName: "asc" } },
+      departments: { include: { manager: true } },
+      customerProducts: {
+        include: {
+          product: { include: { pricing: true } },
+          department: true,
+        },
+        orderBy: [{ isActive: "desc" }, { startDate: "desc" }],
+      },
+      licenses: {
+        include: { product: { select: { id: true, name: true, type: true } } },
+        orderBy: [{ expiresAt: "asc" }],
+      },
+      projects: {
+        include: {
+          assignedTo: { select: { id: true, name: true } },
+          _count: { select: { backlog: true, timeLogs: true } },
+          tenant: { select: { projectPrefix: true } },
+        },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+      },
+      tickets: {
+        include: {
+          contact: { select: { id: true, firstName: true, lastName: true } },
+          product: { select: { id: true, name: true } },
+          assignedTo: { select: { id: true, name: true } },
+        },
+        orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+        take: 50,
+      },
+      hourBundles: {
+        include: {
+          tenant: { select: { bundlePrefix: true } },
+          projectBundles: {
+            include: { project: { select: { id: true, title: true, number: true } } },
+          },
+        },
+        orderBy: [{ isActive: "desc" }, { purchaseDate: "desc" }],
+      },
+      invoices: {
+        include: { lines: true },
+        orderBy: { issueDate: "desc" },
+        take: 50,
+      },
+      activities: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
+      _count: {
+        select: { tickets: true, projects: true, invoices: true, customerProducts: true },
+      },
+    },
+  });
+}
+: [{ isActive: "desc" }, { purchaseDate: "desc" }],
+      },
+
+      // Fakturaer
+      invoices: {
+        include: {
+          lines: true,
+        },
+        orderBy: { issueDate: "desc" },
+        take: 50,
+      },
+
+      // Aktivitetslog
+      activities: {
+        include: { user: { select: { id: true, name: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
+
+      _count: {
+        select: {
+          tickets: true,
+          projects: true,
+          invoices: true,
+          customerProducts: true,
+        },
+      },
+    },
+  });
+}
