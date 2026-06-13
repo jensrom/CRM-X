@@ -250,33 +250,3 @@ export async function getCompanyFull(id: string) {
     },
   });
 }
-: [{ isActive: "desc" }, { purchaseDate: "desc" }],
-      },
-
-      // Fakturaer
-      invoices: {
-        include: {
-          lines: true,
-        },
-        orderBy: { issueDate: "desc" },
-        take: 50,
-      },
-
-      // Aktivitetslog
-      activities: {
-        include: { user: { select: { id: true, name: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-      },
-
-      _count: {
-        select: {
-          tickets: true,
-          projects: true,
-          invoices: true,
-          customerProducts: true,
-        },
-      },
-    },
-  });
-}
