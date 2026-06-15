@@ -15,13 +15,22 @@ import {
 import { formatCurrency, formatDate, DEAL_STAGES, INVOICE_STATUS } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 
-export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DealDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
   const [deal, allProducts] = await Promise.all([
     getDeal(id),
     getProducts({ isActive: true }),
   ]);
   if (!deal) notFound();
+  const backHref =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : "/pipeline";
 
   const stageMeta = DEAL_STAGES[deal.stage as keyof typeof DEAL_STAGES];
   const isClosed = deal.stage === "won" || deal.stage === "lost";
@@ -57,7 +66,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       <AppTopbar pageTitle={deal.title} />
 
 
-      <BackButton href="/pipeline" label="Pipeline" />
+      <BackButton href={backHref} />
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/pipeline" className="hover:text-foreground transition-colors">Pipeline</Link>

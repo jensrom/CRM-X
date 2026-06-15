@@ -27,10 +27,22 @@ const LINE_TYPES = [
 
 const VAT_PCT = 25; // Dansk standard moms
 
-export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function InvoiceDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
   const invoice = await getInvoice(id);
   if (!invoice) notFound();
+
+  // Server-side "tilbage"-mål. Hvis brugeren kom fra en kunde-side
+  // (eller hvor som helst med ?from=), respektér det. Ellers default til faktura-listen.
+  const backHref =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : "/invoices";
 
   async function handleDelete() {
     "use server";
@@ -58,7 +70,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       <AppTopbar pageTitle={`Faktura ${invoiceRef}`} />
 
 
-      <BackButton href="/invoices" label="Fakturaer" />
+      <BackButton href={backHref} />
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/invoices" className="hover:text-foreground transition-colors">Fakturaer</Link>
         <ChevronRight className="h-3.5 w-3.5" />

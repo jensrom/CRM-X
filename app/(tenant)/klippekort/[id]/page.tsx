@@ -35,10 +35,19 @@ function addYears(date: Date, years: number): string {
   return d.toISOString().split("T")[0];
 }
 
-export default async function BundleDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BundleDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
   const [bundle, session] = await Promise.all([getHourBundle(id), auth()]);
   if (!bundle) notFound();
+  const backHref =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : "/klippekort";
 
   // Kun administrator må redigere låste felter (navn).
   // Match både den indbyggede "Admin"-rolle og super_admin.
@@ -95,7 +104,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
       <AppTopbar pageTitle={bundle.name ?? `${bundle.totalHours}t klippekort`} />
 
 
-      <BackButton href="/klippekort" label="Klippekort" />
+      <BackButton href={backHref} />
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/klippekort" className="hover:text-foreground transition-colors">Klippekort</Link>
         <ChevronRight className="h-3.5 w-3.5" />

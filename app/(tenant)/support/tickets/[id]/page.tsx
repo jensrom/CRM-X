@@ -23,10 +23,19 @@ const STATUS_FLOW = [
   { value: "closed",           label: "Lukket"               },
 ];
 
-export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TicketDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
   const [ticket, session] = await Promise.all([getTicket(id), auth()]);
   if (!ticket) notFound();
+  const backHref =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : "/support/tickets";
 
   const status = TICKET_STATUS[ticket.status as keyof typeof TICKET_STATUS];
   const priority = TICKET_PRIORITY[ticket.priority as keyof typeof TICKET_PRIORITY];
@@ -49,7 +58,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
       <AppTopbar pageTitle={`${formatRef(ticket.tenant.ticketPrefix, ticket.number)} ${ticket.title}`} />
 
 
-      <BackButton href="/support/tickets" label="Support Tickets" />
+      <BackButton href={backHref} />
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/support/tickets" className="hover:text-foreground transition-colors">

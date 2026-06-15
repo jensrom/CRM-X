@@ -56,8 +56,17 @@ const PRIORITY_LABEL: Record<string, string> = {
   low: "Lav", medium: "Normal", high: "Høj", critical: "Kritisk",
 };
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const backHref =
+    from && from.startsWith("/") && !from.startsWith("//") ? from : "/projects";
   const [project, allBundles, myCheckIn] = await Promise.all([
     getProject(id),
     getHourBundles(),
@@ -99,7 +108,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
       <AppTopbar pageTitle={project.title} />
 
 
-      <BackButton href="/projects" label="Projekter" />
+      <BackButton href={backHref} />
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/projects" className="hover:text-foreground transition-colors">Projekter</Link>
         <ChevronRight className="h-3.5 w-3.5" />
