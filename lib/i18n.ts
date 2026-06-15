@@ -95,4 +95,8 @@ export function t(key: string, locale: LocaleSlug = DEFAULT_LOCALE): string {
  * Bruges naar vi haenter user.language og skal vaere robuste overfor
  * gamle eller forkerte vaerdier.
  */
-export function normalizeLocale(raw: string | null | undefined)
+export function normalizeLocale(raw: string | null | undefined): LocaleSlug {
+  if (!raw) return DEFAULT_LOCALE;
+  const lower = raw.toLowerCase().slice(0, 2);
+  return (LOCALES.some((l) => l.slug === lower) ? lower : DEFAULT_LOCALE) as LocaleSlug;
+}
