@@ -104,6 +104,120 @@ export async function getTenantUsersWithRoles() {
   });
 }
 
+/**
+ * Henter tenant-licens-info: hvor mange aktive brugere kontra det købte loft.
+ * Bruges af /settings/users header til at vise "11/50 pladser brugt".
+ */
+export async function getTenantLicenseInfo() {
+  const session = await auth();
+  if (!session?.user?.tenantId) return null;
+  const tenantId = session.user.tenantId;
+
+  const [tenant, activeUsers, totalUsers] = await Promise.all([
+    db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { maxUsers: true, plan: true },
+    }),
+    db.user.count({ where: { tenantId, isActive: true } }),
+    db.user.count({ where: { tenantId } }),
+  ]);
+
+  if (!tenant) return null;
+  return {
+    activeUsers,
+    totalUsers,
+    maxUsers: tenant.maxUsers,
+    plan: tenant.plan,
+    remaining: Math.max(0, tenant.maxUsers - activeUsers),
+    atCap: activeUsers >= tenant.maxUsers,
+  };
+}
+
+/**
+ * Opret ny bruger paa tenant.
+ * Hard-guard: kun hvis aktive brugere < maxUsers.
+ * Bruger faar password sendt via klartekst i form'en — i et senere step
+ * skal det erstattes af invite-flow (UserInvite-tabel findes allerede).
+ */
+export async function createTenantUser(formData: FormData) {
+  const session = await getSession();
+  const tenantId = session.user.tenantId!;
+
+  const name = ((formData.get("name") as string) || "").trim();
+  const email = ((formData.get("email") as string) || "").trim().toLowerCase();
+  const password = (formData.get("password") as string) || "";
+  const roleId = (formData.get("roleId") as string) || null;
+
+  if (!name) throw new Error("Navn er paakraevet");
+  if (!email) throw new Error("Email er paakraevet");
+  if (password.length < 8) throw new Error("Password skal vaere mindst 8 tegn");
+
+  // License-cap guard
+  const licenseInfo = await getTenantLicenseInfo();
+  if (!licenseInfo) throw new Error("Kunne ikke tjekke licens");
+  if (licenseInfo.atCap) {
+    throw new Error(
+      `Ingen frie licenser tilbage (${licenseInfo.activeUsers}/${licenseInfo.maxUsers}). ` +
+      `Opgrader plan eller deaktiver en bruger foerst.`
+    );
+  }
+
+  // Dublet-tjek paa email indenfor samme tenant
+  const existing = await db.user.findUnique({
+    where: { tenantId_email: { tenantId, email } },
+    select: { id: true },
+  }).catch(() => null);
+  if (existing) {
+    throw new Error(`En bruger med email "${email}" findes allerede.`);
+  }
+
+  const hashed = await bcrypt.hash(password, 12);
+  await db.user.create({
+    data: {
+      tenantId,
+      email,
+      name,
+      password: hashed,
+      roleId,
+      isActive: true,
+    },
+  });
+
+  revalidatePath("/settings/users");
+}
+
+/**
+ * Aktivér/deaktivér en bruger.
+ * Aktivering har license-cap guard. Deaktivering er altid tilladt.
+ * Kan ikke deaktivere sig selv (ville lukke sig ude).
+ */
+export async function toggleUserActive(userId: string, makeActive: boolean) {
+  const session = await getSession();
+  const tenantId = session.user.tenantId!;
+
+  if (userId === session.user.id && !makeActive) {
+    throw new Error("Du kan ikke deaktivere dig selv.");
+  }
+
+  if (makeActive) {
+    const licenseInfo = await getTenantLicenseInfo();
+    if (!licenseInfo) throw new Error("Kunne ikke tjekke licens");
+    if (licenseInfo.atCap) {
+      throw new Error(
+        `Ingen frie licenser tilbage (${licenseInfo.activeUsers}/${licenseInfo.maxUsers}). ` +
+        `Opgrader plan eller deaktiver en anden bruger foerst.`
+      );
+    }
+  }
+
+  await db.user.updateMany({
+    where: { id: userId, tenantId },
+    data: { isActive: makeActive },
+  });
+
+  revalidatePath("/settings/users");
+}
+
 export async function updateUserRole(formData: FormData) {
   const session = await getSession();
   const userId = formData.get("userId") as string;
@@ -131,7 +245,6 @@ export async function updateUserPassword(formData: FormData) {
   });
 
   revalidatePath("/settings/users");
-  redirect("/settings/users");
 }
 
 export async function updateMyProfile(formData: FormData) {
@@ -153,10 +266,7 @@ export async function updateMyProfile(formData: FormData) {
 }
 
 /**
- * Skift brugerens UI-sprog.
- * Gemmer User.language (ISO 639-1) som læses i sessionen ved næste request.
- * Hvis brugeren vælger et sprog der ikke findes i vores i18n-bibliotek,
- * normaliserer vi til "da" som fallback.
+ * Skift brugerens UI-sprog. Whitelist sikrer kun gyldige locales.
  */
 export async function updateMyLanguage(language: string): Promise<void> {
   const session = await getSession();
@@ -188,11 +298,10 @@ export async function updateInvoiceConfig(formData: FormData) {
     invoiceFooter:         (formData.get("invoiceFooter") as string) || null,
   };
 
-  await (db.tenant as any).update({
+  await db.tenant.update({
     where: { id: tenantId },
     data,
   });
 
   revalidatePath("/settings/invoice-config");
-  redirect("/settings/invoice-config");
 }
