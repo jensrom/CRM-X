@@ -260,6 +260,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantSlug: tenant.slug,
           permissions: user.role?.permissions ?? {},
           modules: tenant.modules,
+          language: (user as any).language ?? null,
         };
       },
     }),
@@ -272,6 +273,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.tenantSlug = (user as any).tenantSlug;
         token.permissions = (user as any).permissions;
         token.modules = (user as any).modules;
+        token.language = (user as any).language;
       }
       return token;
     },
@@ -286,6 +288,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           tenantSlug: token.tenantSlug as string | undefined,
           permissions: token.permissions as Record<string, any>,
           modules: token.modules as string[],
+          language: (token.language as string | null) ?? null,
         },
       };
     },
@@ -317,6 +320,7 @@ declare module "next-auth" {
     user: {
       id: string;
       name: string;
+      language: string | null;
       email: string;
       role: string;
       tenantId: string | null;

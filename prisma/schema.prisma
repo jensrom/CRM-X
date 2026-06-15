@@ -304,6 +304,13 @@ model Company {
   industry     String?
   notes        String?  @db.Text
   isActive     Boolean  @default(true)
+  // Sporbarhed: hvem oprettede ressourcen
+  // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
+  // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
+  // der "udfoertes som"
+  createdById             String?
+  createdByImpersonatorId String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -393,6 +400,7 @@ model Product {
   projectProducts  ProjectProduct[]
   licenses         License[]
   timeLogs         TimeLog[]
+  dealProducts     DealProduct[]
 
   @@map("products")
 }
@@ -465,6 +473,13 @@ model Ticket {
   priority     String   @default("normal")
   resolvedAt   DateTime?
   closedAt     DateTime?
+  // Sporbarhed: hvem oprettede ressourcen
+  // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
+  // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
+  // der "udfoertes som"
+  createdById             String?
+  createdByImpersonatorId String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -584,6 +599,13 @@ model Project {
   status       String   @default("planning")
   startDate    DateTime?
   endDate      DateTime?
+  // Sporbarhed: hvem oprettede ressourcen
+  // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
+  // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
+  // der "udfoertes som"
+  createdById             String?
+  createdByImpersonatorId String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -710,15 +732,58 @@ model Deal {
   closedAt          DateTime?
   lostReason        String?
   notes             String?   @db.Text
+  // Sporbarhed: hvem oprettede ressourcen
+  // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
+  // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
+  // der "udfoertes som"
+  createdById             String?
+  createdByImpersonatorId String?
+
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  company    Company    @relation(fields: [companyId], references: [id])
-  assignedTo User?      @relation("DealAssignee", fields: [assignedToId], references: [id])
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company    Company       @relation(fields: [companyId], references: [id])
+  assignedTo User?         @relation("DealAssignee", fields: [assignedToId], references: [id])
   activities Activity[]
+  products   DealProduct[] // Tilbudte produkter på dette deal
+  invoices   Invoice[]     // Fakturaer genereret fra dette deal
 
   @@map("deals")
+}
+
+/**
+ * Produkt-linjer på et deal/tilbud.
+ *
+ * Hver linje rummer alt der skal til for at generere en faktura-linje:
+ *   • produkt + antal/seats (pladser)
+ *   • prisinterval + faktureringsinterval (samme model som CustomerProduct)
+ *   • valgfri pris-override (når sælger forhandler en specialpris)
+ *   • valgfri rabat-procent pr. linje
+ *
+ * Ved Vundet kopieres disse linjer til Invoice + CustomerProduct.
+ */
+model DealProduct {
+  id              String   @id @default(cuid())
+  tenantId        String
+  dealId          String
+  productId       String
+  seats           Int      @default(1)
+  // monthly | quarterly | biannual | annual | onetime
+  pricingInterval String   @default("monthly")
+  billingInterval String   @default("monthly")
+  // Tom = brug produktets standardpris for det matchende interval
+  unitPriceOverride Decimal? @db.Decimal(10, 2)
+  discountPct     Decimal  @db.Decimal(5, 2) @default(0)
+  notes           String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  deal    Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([dealId])
+  @@map("deal_products")
 }
 
 // ============================================================
@@ -761,6 +826,13 @@ model Lead {
   status     String   @default("new")
   notes      String?  @db.Text
   convertedCompanyId String? // Hvis konverteret til Company
+  // Sporbarhed: hvem oprettede ressourcen
+  // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
+  // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
+  // der "udfoertes som"
+  createdById             String?
+  createdByImpersonatorId String?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -812,6 +884,7 @@ model Invoice {
   tenantId     String
   companyId    String
   projectId    String?
+  dealId       String?  // Sat når fakturaen blev genereret fra en vundet deal
   number       Int       // Auto-increment pr. tenant (F-0001 format)
   status       String    @default("draft") // draft | sent | paid | cancelled
   issueDate    DateTime  @default(now())
@@ -828,6 +901,7 @@ model Invoice {
   tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company Company       @relation(fields: [companyId], references: [id])
   project Project?      @relation(fields: [projectId], references: [id])
+  deal    Deal?         @relation(fields: [dealId], references: [id])
   lines   InvoiceLine[]
 
   @@unique([tenantId, number])
@@ -847,60 +921,4 @@ model InvoiceLine {
   isCredit    Boolean @default(false)
   sortOrder   Int     @default(0)
   timeLogId   String?
-  productId   String?
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@map("invoice_lines")
-}
-
-// ============================================================
-// NOTIFIKATIONER
-// ============================================================
-
-model Notification {
-  id         String   @id @default(cuid())
-  tenantId   String
-  userId     String
-  type       String
-  title      String
-  message    String   @db.Text
-  isRead     Boolean  @default(false)
-  readAt     DateTime?
-  linkUrl    String?
-  relatedId  String?
-  createdAt  DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, isRead])
-  @@map("notifications")
-}
-
-// ============================================================
-// AUDIT LOG (append-only)
-// ============================================================
-model AuditLog {
-  id           String   @id @default(cuid())
-  tenantId     String?
-  actorId      String?
-  actorEmail   String?
-  actorRole    String?
-  action       String
-  resourceType String
-  resourceId   String?
-  before       Json?
-  after        Json?
-  ipAddress    String?
-  userAgent    String?  @db.Text
-  outcome      String   @default("success")
-  message      String?  @db.Text
-  createdAt    DateTime @default(now())
-
-  @@index([tenantId, createdAt])
-  @@index([actorId, createdAt])
-  @@index([resourceType, resourceId])
-  @@index([action, createdAt])
-  @@map("audit_logs")
-}
+  productId   Str

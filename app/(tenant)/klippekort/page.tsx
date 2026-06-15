@@ -3,13 +3,20 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
-import { Scissors, Plus, Building2, CalendarDays, FolderKanban } from "lucide-react";
+import { Scissors, Plus, Building2, CalendarDays, FolderKanban, Search } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { ClickableRow } from "@/components/shared/ClickableRow";
+import { KlippekortSearchBar } from "@/components/klippekort/KlippekortSearchBar";
 
-export default async function KlippekortPage() {
-  const bundles = await getHourBundles();
+export default async function KlippekortPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const sp = await searchParams;
+  const search = sp.q?.trim();
+  const bundles = await getHourBundles({ search });
   const active = bundles.filter((b) => b.isActive);
 
   function BundleRow({ bundle }: { bundle: typeof bundles[0] }) {
@@ -112,7 +119,11 @@ export default async function KlippekortPage() {
 
       <PageHeader
         title="Klippekort"
-        description={`${active.length} aktive · ${bundles.length} i alt`}
+        description={
+          search
+            ? `${bundles.length} match for "${search}" · ${active.length} aktive`
+            : `${active.length} aktive · ${bundles.length} i alt`
+        }
         actions={
           <a href="/klippekort/new">
             <Button size="md"><Plus className="h-4 w-4" />Nyt klippekort</Button>
@@ -120,7 +131,24 @@ export default async function KlippekortPage() {
         }
       />
 
+      {/* Søgefelt — filtrerer paa kunde + projekt + klippekort-navn */}
+      <div className="mb-4">
+        <KlippekortSearchBar />
+      </div>
+
       {bundles.length === 0 ? (
+        search ? (
+          <EmptyState
+            icon={Search}
+            title={`Ingen match for "${search}"`}
+            description="Prøv et andet søgeord eller ryd filteret."
+            action={
+              <Link href="/klippekort">
+                <Button size="sm" variant="ghost">Vis alle klippekort</Button>
+              </Link>
+            }
+          />
+        ) : (
         <EmptyState
           icon={Scissors}
           title="Ingen klippekort"
@@ -131,6 +159,7 @@ export default async function KlippekortPage() {
             </a>
           }
         />
+        )
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -154,7 +183,7 @@ export default async function KlippekortPage() {
               </tbody>
             </table>
           </div>
-                    <div className="px-4 py-2.5 border-t border-border bg-secondary/20 text-xs text-muted-foreground">
+          <div className="px-4 py-2.5 border-t border-border bg-secondary/20 text-xs text-muted-foreground">
             {bundles.length} klippekort i alt
           </div>
         </div>

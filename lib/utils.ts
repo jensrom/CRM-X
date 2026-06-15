@@ -129,3 +129,77 @@ export const PRICING_INTERVALS = {
   annual: "Årlig",
   onetime: "Engangspris",
 } as const;
+
+/**
+ * Projekt-status → dansk label + farve-tone
+ * Bruges hvor projektets status vises som badge eller chip.
+ */
+export const PROJECT_STATUS = {
+  active:    { label: "Aktiv",      color: "success" },
+  waiting:   { label: "Afventer",   color: "warning" },
+  closed:    { label: "Lukket",     color: "muted"   },
+  // Legacy
+  planning:  { label: "Planlægning", color: "muted"   },
+  on_hold:   { label: "Pause",       color: "warning" },
+  completed: { label: "Afsluttet",   color: "success" },
+  cancelled: { label: "Aflyst",      color: "danger"  },
+} as const;
+
+/**
+ * Faktura-status → dansk label
+ */
+export const INVOICE_STATUS = {
+  draft:     { label: "Kladde",  color: "muted"   },
+  sent:      { label: "Sendt",   color: "info"    },
+  paid:      { label: "Betalt",  color: "success" },
+  overdue:   { label: "Forfalden", color: "danger" },
+  cancelled: { label: "Annulleret", color: "muted" },
+} as const;
+
+/**
+ * Industri-slugs → danske labels
+ * Bruges når industri-værdien er gemt på engelsk i DB.
+ * Faldback: vis værdien som den er (capitalize første bogstav).
+ */
+const INDUSTRY_LABELS: Record<string, string> = {
+  manufacturing: "Fremstilling",
+  construction:  "Byggeri",
+  retail:        "Detail",
+  wholesale:     "Engros",
+  finance:       "Finans",
+  insurance:     "Forsikring",
+  it:            "IT",
+  software:      "Software",
+  consulting:    "Konsulent",
+  healthcare:    "Sundhed",
+  education:     "Undervisning",
+  transport:     "Transport",
+  logistics:     "Logistik",
+  energy:        "Energi",
+  agriculture:   "Landbrug",
+  food:          "Fødevarer",
+  hospitality:   "Hotel & restauration",
+  realestate:    "Ejendomme",
+  legal:         "Jura",
+  marketing:     "Marketing",
+  media:         "Medier",
+  telecom:       "Telekommunikation",
+  utilities:     "Forsyning",
+  other:         "Andet",
+};
+
+export function formatIndustry(value: string | null | undefined): string {
+  if (!value) return "";
+  const key = value.toLowerCase().trim();
+  if (INDUSTRY_LABELS[key]) return INDUSTRY_LABELS[key];
+  // Fallback — capitalize første bogstav så DB-værdien stadig ser pæn ud
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+/**
+ * Pluralisering af "kritisk" → "kritiske"
+ * 1 = kritisk, 2+ = kritiske
+ */
+export function pluralKritisk(n: number): string {
+  return n === 1 ? "kritisk" : "kritiske";
+}

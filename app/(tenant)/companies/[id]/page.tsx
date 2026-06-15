@@ -10,9 +10,11 @@ import {
   Key, FolderKanban, Scissors, Receipt, Activity as ActivityIcon, Plus,
   CheckCircle2, XCircle, AlertTriangle, Clock,
 } from "lucide-react";
-import { formatDate, formatCurrency, TICKET_STATUS, TICKET_PRIORITY, formatRef } from "@/lib/utils";
+import { formatDate, formatCurrency, TICKET_STATUS, TICKET_PRIORITY, formatRef, PROJECT_STATUS, INVOICE_STATUS, formatIndustry } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { CompanyTabBar, type CompanyTabKey } from "@/components/companies/CompanyTabBar";
+import { DeleteCompanyDialog } from "@/components/companies/DeleteCompanyDialog";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { getProductType } from "@/lib/product-types";
 import { BILLING_INTERVALS, lineTotal } from "@/lib/billing-intervals";
 
@@ -75,12 +77,27 @@ function CompanyHeader({ company, invoiceEmail }: { company: any; invoiceEmail: 
           </div>
           <div>
             <h2 className="text-lg font-semibold">{company.name}</h2>
-            {company.industry && <p className="text-xs text-muted-foreground">{company.industry}</p>}
+            {company.industry && <p className="text-xs text-muted-foreground">{formatIndustry(company.industry)}</p>}
+            <div className="mt-1">
+              <CreatorBadge
+                createdById={(company as any).createdById}
+                createdByImpersonatorId={(company as any).createdByImpersonatorId}
+                createdAt={company.createdAt}
+              />
+            </div>
           </div>
         </div>
-        <Link href={`/companies/${company.id}/edit`}>
-          <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5" /> Rediger</Button>
-        </Link>
+        <div className="flex items-center gap-1">
+          <Link href={`/companies/${company.id}/edit`}>
+            <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5" /> Rediger</Button>
+          </Link>
+          <DeleteCompanyDialog
+            companyId={company.id}
+            companyName={company.name}
+            openTicketsCount={company.tickets.filter((t: any) => t.status !== "closed").length}
+            activeProjectsCount={company.projects.filter((p: any) => p.status === "active").length}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -249,22 +266,23 @@ function LicenserTab({ company }: { company: any }) {
         action={<Link href={`/licenses/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Opret licens</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={Key} title="Ingen aktive licenser" description="Opret en licens for kunden - fx software-licens med udløb og fil-upload." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((l: any) => <LicenseRow key={l.id} l={l} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((l: any) => <LicenseRow key={l.id} l={l} from={`/companies/${company.id}?tab=licenser`} />)}</div>}
       </Section>
       {expired.length > 0 && (
         <Section title={`Udløbet (${expired.length})`} icon={AlertTriangle} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{expired.map((l: any) => <LicenseRow key={l.id} l={l} expired />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{expired.map((l: any) => <LicenseRow key={l.id} l={l} expired from={`/companies/${company.id}?tab=licenser`} />)}</div>
         </Section>
       )}
     </div>
   );
 }
 
-function LicenseRow({ l, expired }: { l: any; expired?: boolean }) {
+function LicenseRow({ l, expired, from }: { l: any; expired?: boolean; from?: string }) {
   const daysToExpiry = l.expiresAt ? Math.ceil((new Date(l.expiresAt).getTime() - Date.now()) / 86400000) : null;
   const warning = daysToExpiry !== null && daysToExpiry <= 30 && daysToExpiry > 0;
+  const href = from ? `/licenses/${l.id}?from=${encodeURIComponent(from)}` : `/licenses/${l.id}`;
   return (
-    <Link href={`/licenses/${l.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
       <Key className={`h-4 w-4 shrink-0 ${expired ? "text-amber-600" : "text-primary"}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{l.product?.name ?? l.name ?? "Licens"}</p>
@@ -290,21 +308,22 @@ function ProjekterTab({ company }: { company: any }) {
         action={<Link href={`/projects/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Nyt projekt</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={FolderKanban} title="Ingen aktive projekter" description="Opret et projekt for kunden." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((p: any) => <ProjectRow key={p.id} p={p} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((p: any) => <ProjectRow key={p.id} p={p} from={`/companies/${company.id}?tab=projekter`} />)}</div>}
       </Section>
       {closed.length > 0 && (
         <Section title={`Afsluttede (${closed.length})`} icon={CheckCircle2} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-80">{closed.map((p: any) => <ProjectRow key={p.id} p={p} closed />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-80">{closed.map((p: any) => <ProjectRow key={p.id} p={p} closed from={`/companies/${company.id}?tab=projekter`} />)}</div>
         </Section>
       )}
     </div>
   );
 }
 
-function ProjectRow({ p, closed }: { p: any; closed?: boolean }) {
+function ProjectRow({ p, closed, from }: { p: any; closed?: boolean; from?: string }) {
   const ref = p.tenant?.projectPrefix ? formatRef(p.tenant.projectPrefix, p.number) : `#${p.number}`;
+  const href = from ? `/projects/${p.id}?from=${encodeURIComponent(from)}` : `/projects/${p.id}`;
   return (
-    <Link href={`/projects/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
       <FolderKanban className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{p.title}</p>
@@ -314,7 +333,9 @@ function ProjectRow({ p, closed }: { p: any; closed?: boolean }) {
           {p._count?.timeLogs > 0 && <> &middot; {p._count.timeLogs} tidslogs</>}
         </p>
       </div>
-      <span className="text-xs text-muted-foreground">{p.status}</span>
+      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((PROJECT_STATUS as any)[p.status]?.color) ?? "muted"]}`}>
+        {(PROJECT_STATUS as any)[p.status]?.label ?? p.status}
+      </span>
       <ChevronRight className="h-4 w-4 text-muted-foreground" />
     </Link>
   );
@@ -329,11 +350,11 @@ function TicketsTab({ company }: { company: any }) {
         action={<Link href={`/support/tickets/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Ny ticket</Button></Link>}>
         {open.length === 0
           ? <EmptyState icon={TicketIcon} title="Ingen åbne tickets" description="Alt er under kontrol - eller opret en ticket på kunden." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{open.map((t: any) => <TicketRow key={t.id} t={t} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{open.map((t: any) => <TicketRow key={t.id} t={t} from={`/companies/${company.id}?tab=tickets`} />)}</div>}
       </Section>
       {closed.length > 0 && (
         <Section title={`Lukkede tickets (${closed.length})`} icon={CheckCircle2} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{closed.slice(0, 20).map((t: any) => <TicketRow key={t.id} t={t} closed />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{closed.slice(0, 20).map((t: any) => <TicketRow key={t.id} t={t} closed from={`/companies/${company.id}?tab=tickets`} />)}</div>
         </Section>
       )}
     </div>
@@ -348,11 +369,12 @@ const TONE_BADGE: Record<string, string> = {
   muted:   "bg-secondary text-muted-foreground border-border",
 };
 
-function TicketRow({ t, closed }: { t: any; closed?: boolean }) {
+function TicketRow({ t, closed, from }: { t: any; closed?: boolean; from?: string }) {
   const stMeta = (TICKET_STATUS as any)[t.status];
   const prMeta = (TICKET_PRIORITY as any)[t.priority];
+  const href = from ? `/support/tickets/${t.id}?from=${encodeURIComponent(from)}` : `/support/tickets/${t.id}`;
   return (
-    <Link href={`/support/tickets/${t.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
       <TicketIcon className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{t.subject ?? t.title ?? "Ticket"}</p>
@@ -378,25 +400,26 @@ function KlippekortTab({ company }: { company: any }) {
         action={<Link href={`/klippekort/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Nyt klippekort</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={Scissors} title="Ingen aktive klippekort" description="Sælg en timepakke til kunden." />
-          : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{active.map((b: any) => <BundleCard key={b.id} b={b} />)}</div>}
+          : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{active.map((b: any) => <BundleCard key={b.id} b={b} from={`/companies/${company.id}?tab=klippekort`} />)}</div>}
       </Section>
       {used.length > 0 && (
         <Section title={`Opbrugte / inaktive (${used.length})`} icon={CheckCircle2} muted>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">{used.map((b: any) => <BundleCard key={b.id} b={b} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">{used.map((b: any) => <BundleCard key={b.id} b={b} from={`/companies/${company.id}?tab=klippekort`} />)}</div>
         </Section>
       )}
     </div>
   );
 }
 
-function BundleCard({ b }: { b: any }) {
+function BundleCard({ b, from }: { b: any; from?: string }) {
   const ref = b.tenant?.bundlePrefix ? formatRef(b.tenant.bundlePrefix, b.number) : `KB-${b.number}`;
+  const href = from ? `/klippekort/${b.id}?from=${encodeURIComponent(from)}` : `/klippekort/${b.id}`;
   const usedH = Math.round(b.usedMinutes / 60 * 10) / 10;
   const totalH = b.totalHours;
   const remH = Math.max(0, totalH - usedH);
   const pct = Math.min(100, (b.usedMinutes / (totalH * 60)) * 100);
   return (
-    <Link href={`/klippekort/${b.id}`} className="block group">
+    <Link href={href} className="block group">
       <div className="p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-secondary/30 transition-colors">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium group-hover:text-primary transition-colors">{b.name ?? `${totalH} timers klippekort`}</p>
@@ -424,13 +447,15 @@ function FakturaerTab({ company }: { company: any }) {
           const subtotal = inv.lines.reduce((s: number, l: any) => s + Number(l.quantity) * Number(l.unitPrice) * (1 - Number(l.discountPct ?? 0) / 100), 0);
           const total = inv.vatEnabled ? subtotal * (1 + Number(inv.vatPct) / 100) : subtotal;
           return (
-            <Link key={inv.id} href={`/invoices/${inv.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+            <Link key={inv.id} href={`/invoices/${inv.id}?from=${encodeURIComponent(`/companies/${company.id}?tab=fakturaer`)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
               <Receipt className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">F-{String(inv.number).padStart(4, "0")}</p>
                 <p className="text-xs text-muted-foreground">{formatDate(inv.issueDate)}</p>
               </div>
-              <span className="text-xs text-muted-foreground">{inv.status}</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((INVOICE_STATUS as any)[inv.status]?.color) ?? "muted"]}`}>
+                {(INVOICE_STATUS as any)[inv.status]?.label ?? inv.status}
+              </span>
               <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </Link>

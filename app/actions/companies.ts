@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { getCreatorContext } from "@/lib/creator-context";
 
 const companySchema = z.object({
   name:         z.string().min(1, "Navn er påkrævet"),
@@ -29,8 +30,12 @@ export async function createCompany(formData: FormData) {
   const raw = Object.fromEntries(formData);
   const data = companySchema.parse(raw);
 
+  const _creator = await getCreatorContext();
+
   const company = await db.company.create({
     data: {
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
       tenantId: session.user.tenantId,
       ...data,
       email: data.email || null,
@@ -249,4 +254,65 @@ export async function getCompanyFull(id: string) {
       },
     },
   });
+}
+
+/**
+ * Inline-opret kunde — returnerer kunden uden redirect.
+ *
+ * Bruges af InlineCreateCompany-modalen så kalderen kan tilknytte den nye
+ * kunde direkte (fx på et lead eller deal) uden at forlade flowet.
+ *
+ * Idempotency-tjek: hvis der allerede findes en aktiv kunde med samme navn
+ * (case-insensitive trim), returnerer vi den eksisterende i stedet for at
+ * duplikere. Beskytter mod dobbelt-submit og menneskelige fejl.
+ */
+export async function createCompanyInline(formData: FormData): Promise<{ id: string; name: string }> {
+  const session = await auth();
+  if (!session?.user?.tenantId) throw new Error("Ikke autoriseret");
+  const tenantId = session.user.tenantId;
+
+  const name = ((formData.get("name") as string) || "").trim();
+  if (!name) throw new Error("Navn er påkrævet");
+
+  const orgNumber = ((formData.get("orgNumber") as string) || "").trim() || null;
+  const phone = ((formData.get("phone") as string) || "").trim() || null;
+  const emailRaw = ((formData.get("email") as string) || "").trim();
+  const email = emailRaw || null;
+
+  // Idempotency: existing match på navn (case-insensitive)
+  const existing = await db.company.findFirst({
+    where: {
+      tenantId,
+      isActive: true,
+      name: { equals: name, mode: "insensitive" },
+    },
+    select: { id: true, name: true },
+  });
+  if (existing) {
+    return existing;
+  }
+
+  // Også: existing match på CVR hvis sat — undgår at samme CVR oprettes 2x
+  if (orgNumber) {
+    const byCvr = await db.company.findFirst({
+      where: { tenantId, isActive: true, orgNumber },
+      select: { id: true, name: true },
+    });
+    if (byCvr) return byCvr;
+  }
+
+  const company = await db.company.create({
+    data: {
+      tenantId,
+      name,
+      orgNumber,
+      phone,
+      email,
+      country: "Danmark",
+    },
+    select: { id: true, name: true },
+  });
+
+  revalidatePath("/companies");
+  return company;
 }

@@ -146,7 +146,7 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <KpiCard label="Aktive kunder" value={d.companiesCount} icon={Building2} color="primary" href="/companies" />
           {hasSupport && (
-            <KpiCard label="Åbne tickets" value={d.openTickets} sub={d.criticalTickets > 0 ? `${d.criticalTickets} kritiske` : "Alt roligt"}
+            <KpiCard label="Åbne tickets" value={d.openTickets} sub={d.criticalTickets > 0 ? `${d.criticalTickets} kritisk${d.criticalTickets > 1 ? "e" : ""}` : "Alt roligt"}
               icon={Ticket} color={d.criticalTickets > 0 ? "rose" : "amber"} href="/support/tickets" alert={d.criticalTickets > 0} />
           )}
           {hasSales && (
@@ -343,7 +343,7 @@ export default async function DashboardPage() {
             <p className="text-xs text-muted-foreground mb-4">Start med at oprette dit første kunde</p>
             <div className="flex items-center justify-center gap-3">
               <Link href="/companies/new"
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors">
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium imary/90 transition-colors">
                 Opret kunde
               </Link>
             </div>

@@ -1,22 +1,56 @@
 import { getDeal } from "@/app/actions/deals";
+import { getProducts } from "@/app/actions/products";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Button } from "@/components/ui/button";
 import { StageSwitcher } from "@/components/pipeline/StageSwitcher";
+import { DealProductsPanel } from "@/components/pipeline/DealProductsPanel";
+import { WonDealButton } from "@/components/pipeline/WonDealButton";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   Building2, Calendar, Target, User, Pencil,
-  ChevronRight, Clock, Percent, FileText
+  ChevronRight, Clock, Percent, FileText, Receipt
 } from "lucide-react";
-import { formatCurrency, formatDate, DEAL_STAGES } from "@/lib/utils";
+import { formatCurrency, formatDate, DEAL_STAGES, INVOICE_STATUS } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const deal = await getDeal(id);
+  const [deal, allProducts] = await Promise.all([
+    getDeal(id),
+    getProducts({ isActive: true }),
+  ]);
   if (!deal) notFound();
 
   const stageMeta = DEAL_STAGES[deal.stage as keyof typeof DEAL_STAGES];
+  const isClosed = deal.stage === "won" || deal.stage === "lost";
+  const hasActiveInvoice = (deal.invoices ?? []).some((i: any) => i.status !== "cancelled");
+
+  // Serialiser produkter til klient-komponenten
+  const productOptions = (allProducts as any[]).map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    pricingMode: (p.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period",
+    pricing: (p.pricing ?? []).map((pp: any) => ({ interval: pp.interval, price: Number(pp.price) })),
+  }));
+  const dealProductLines = (deal.products ?? []).map((dp: any) => ({
+    id: dp.id,
+    productId: dp.productId,
+    product: {
+      id: dp.product.id,
+      name: dp.product.name,
+      type: dp.product.type,
+      pricingMode: (dp.product.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period",
+      pricing: (dp.product.pricing ?? []).map((pp: any) => ({ interval: pp.interval, price: Number(pp.price) })),
+    },
+    seats: dp.seats,
+    pricingInterval: dp.pricingInterval,
+    billingInterval: dp.billingInterval,
+    unitPriceOverride: dp.unitPriceOverride ? Number(dp.unitPriceOverride) : null,
+    discountPct: Number(dp.discountPct),
+  }));
 
   return (
     <>
@@ -117,14 +151,80 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
           <div className="bg-card border border-border rounded-xl p-4 space-y-2">
             <p className="text-xs text-muted-foreground font-medium">Tidslinje</p>
             <div className="space-y-1.5 text-xs text-muted-foreground">
-              <p>Oprettet: {formatDate(deal.createdAt)}</p>
+              <CreatorBadge
+                createdById={(deal as any).createdById}
+                createdByImpersonatorId={(deal as any).createdByImpersonatorId}
+                createdAt={deal.createdAt}
+              />
               {deal.closedAt && <p>Lukket: {formatDate(deal.closedAt)}</p>}
             </div>
           </div>
         </div>
 
-        {/* HØJRE: Aktiviteter */}
+        {/* HØJRE: Produkter + Vundet-knap + Aktiviteter */}
         <div className="xl:col-span-2 space-y-5">
+
+          {/* Produkter på tilbud */}
+          <DealProductsPanel
+            dealId={deal.id}
+            lines={dealProductLines}
+            availableProducts={productOptions}
+            isClosed={isClosed}
+          />
+
+          {/* Vundet-knap — kun før dealen er lukket */}
+          {!isClosed && dealProductLines.length > 0 && (
+            <div className="bg-emerald-50/40 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-900">Klar til at lukke?</p>
+                <p className="text-xs text-emerald-700/80 mt-0.5">
+                  Markér dealen som Vundet og generér faktura + tilkobl produkter på kunden i ét hug.
+                </p>
+              </div>
+              <WonDealButton
+                dealId={deal.id}
+                productCount={dealProductLines.length}
+                hasInvoice={hasActiveInvoice}
+                dealTitle={deal.title}
+                companyName={deal.company?.name ?? "kunden"}
+              />
+            </div>
+          )}
+
+          {/* Genereret faktura (vises efter Vundet) */}
+          {(deal.invoices ?? []).length > 0 && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-border">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-muted-foreground" />
+                  Fakturaer fra dette deal ({deal.invoices.length})
+                </h3>
+              </div>
+              <ul className="divide-y divide-border">
+                {deal.invoices.map((inv: any) => {
+                  const stMeta = (INVOICE_STATUS as any)[inv.status];
+                  return (
+                    <li key={inv.id}>
+                      <Link
+                        href={`/invoices/${inv.id}`}
+                        className="flex items-center gap-3 px-5 py-3 hover:bg-secondary/30 transition-colors"
+                      >
+                        <Receipt className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">F-{String(inv.number).padStart(4, "0")}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(inv.issueDate)}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{stMeta?.label ?? inv.status}</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Aktiviteter */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-5 py-3.5 border-b border-border">
               <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -138,7 +238,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
               </p>
             ) : (
               <div className="divide-y divide-border">
-                {deal.activities.map((act) => (
+                {deal.activities.map((act: any) => (
                   <div key={act.id} className="flex items-start gap-3 px-5 py-3">
                     <div>
                       <p className="text-sm font-medium">{act.subject}</p>

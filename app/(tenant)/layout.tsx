@@ -23,6 +23,7 @@ export default async function TenantLayout({ children, modal }: { children: Reac
   }
 
   const { name, email, role, permissions, modules } = session.user;
+  const userLanguage = (session.user as any).language as string | null;
 
   const [notifications, unreadCount, myCheckIn, projects] = await Promise.all([
     getMyNotifications(20),
@@ -57,6 +58,7 @@ export default async function TenantLayout({ children, modal }: { children: Reac
         userEmail={email || ""}
         userRole={role || "user"}
         permissions={permissions || {}}
+        locale={userLanguage as any}
       />
 
       {/* Main content area */}

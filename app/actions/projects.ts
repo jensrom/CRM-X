@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCreatorContext } from "@/lib/creator-context";
 
 // Næste projekt-nummer pr. tenant
 async function nextProjectNumber(tenantId: string): Promise<number> {
@@ -99,8 +100,12 @@ export async function createProject(formData: FormData) {
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
 
+  const _creator = await getCreatorContext();
+
   const project = await db.project.create({
     data: {
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
       tenantId,
       number,
       title: formData.get("title") as string,

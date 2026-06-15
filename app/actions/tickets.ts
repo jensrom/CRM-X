@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createNotification } from "@/app/actions/notifications";
 import { ACTIVE_TICKET_STATUSES_WITH_LEGACY } from "@/lib/ticket-status";
+import { getCreatorContext } from "@/lib/creator-context";
 
 // ─── Næste ticket-nummer pr. tenant ─────────────────────────────────────────
 async function nextTicketNumber(tenantId: string): Promise<number> {
@@ -100,8 +101,12 @@ export async function createTicket(formData: FormData) {
   const productId = formData.get("productId") as string;
   const assignedToId = formData.get("assignedToId") as string;
 
+  const _creator = await getCreatorContext();
+
   const ticket = await db.ticket.create({
     data: {
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
       tenantId,
       number,
       title: formData.get("title") as string,

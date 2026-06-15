@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCreatorContext } from "@/lib/creator-context";
 
 async function getSession() {
   const session = await auth();
@@ -37,8 +38,12 @@ export async function getLead(id: string) {
 
 export async function createLead(formData: FormData) {
   const session = await getSession();
+  const _creator = await getCreatorContext();
+
   const lead = await db.lead.create({
     data: {
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
       tenantId: session.user.tenantId!,
       firstName: formData.get("firstName") as string,
       lastName: formData.get("lastName") as string,

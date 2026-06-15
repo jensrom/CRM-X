@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCreatorContext } from "@/lib/creator-context";
 
 async function getSession() {
   const session = await auth();
@@ -22,16 +23,45 @@ async function nextBundleNumber(tenantId: string): Promise<number> {
 }
 
 // Hent liste
-export async function getHourBundles(opts?: { companyId?: string; isActive?: boolean }) {
+//
+// `search` matcher case-insensitive paa:
+//   • kundens navn
+//   • projekt-titel (via projectBundles-relationen)
+//   • klippekort-navn
+// Praktisk til toppen af /klippekort hvor sælger hurtigt vil filtrere
+// listen for at finde et bestemt klippekort.
+export async function getHourBundles(opts?: {
+  companyId?: string;
+  isActive?: boolean;
+  search?: string;
+}) {
   const session = await auth();
   if (!session?.user?.tenantId) return [];
   const tenantId = session.user.tenantId;
+
+  const search = opts?.search?.trim();
+  const searchFilter = search
+    ? {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { company: { name: { contains: search, mode: "insensitive" as const } } },
+          {
+            projectBundles: {
+              some: {
+                project: { title: { contains: search, mode: "insensitive" as const } },
+              },
+            },
+          },
+        ],
+      }
+    : {};
 
   return db.hourBundle.findMany({
     where: {
       tenantId,
       ...(opts?.companyId ? { companyId: opts.companyId } : {}),
       ...(opts?.isActive !== undefined ? { isActive: opts.isActive } : {}),
+      ...searchFilter,
     },
     include: {
       company: { select: { id: true, name: true } },
@@ -92,8 +122,12 @@ export async function createHourBundle(formData: FormData) {
   const expiresAt = formData.get("expiresAt") as string;
   const projectId = (formData.get("projectId") as string) || null;
 
+  const _creator = await getCreatorContext();
+
   const bundle = await db.hourBundle.create({
     data: {
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
       tenantId,
       number,
       companyId: formData.get("companyId") as string,
@@ -141,7 +175,6 @@ export async function updateHourBundle(formData: FormData) {
   const session = await getSession();
   const tenantId = session.user.tenantId!;
   const id = formData.get("id") as string;
-
   const price = formData.get("price") as string;
   const expiresAt = formData.get("expiresAt") as string;
 
@@ -162,7 +195,6 @@ export async function updateHourBundle(formData: FormData) {
   redirect(`/klippekort/${id}`);
 }
 
-// Slet bundle
 export async function deleteHourBundle(id: string) {
   const session = await getSession();
   const tenantId = session.user.tenantId!;

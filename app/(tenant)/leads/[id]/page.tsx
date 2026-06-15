@@ -9,6 +9,7 @@ import Link from "next/link";
 import { ChevronRight, Target, Trash2, ArrowRight, Building2 } from "lucide-react";
 import { BackButton } from "@/components/shared/BackButton";
 import { LeadActivityTimeline } from "@/components/leads/LeadActivityTimeline";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 
 const STATUSES = [
   { value: "new", label: "Ny" }, { value: "contacted", label: "Kontaktet" },
@@ -64,6 +65,13 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 <div>
                   <p className="font-semibold">{lead.firstName} {lead.lastName}</p>
                   {lead.jobTitle && <p className="text-xs text-muted-foreground">{lead.jobTitle}</p>}
+                  <div className="mt-1">
+                    <CreatorBadge
+                      createdById={(lead as any).createdById}
+                      createdByImpersonatorId={(lead as any).createdByImpersonatorId}
+                      createdAt={lead.createdAt}
+                    />
+                  </div>
                 </div>
               </div>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[lead.status] ?? "bg-secondary text-muted-foreground"}`}>

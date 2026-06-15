@@ -2,6 +2,7 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CompanyPickerWithCreate } from "@/components/shared/CompanyPickerWithCreate";
 import { createDeal } from "@/app/actions/deals";
 import { getCompanies } from "@/app/actions/companies";
 import { auth } from "@/lib/auth";
@@ -98,17 +99,11 @@ export default async function NewDealPage() {
               <label className="block text-sm font-medium text-foreground">
                 Kunde <span className="text-destructive">*</span>
               </label>
-              <select
+              <CompanyPickerWithCreate
+                companies={companies.map((c) => ({ id: c.id, name: c.name }))}
                 name="companyId"
                 required
-                className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm
-                           focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">— Vælg kunde —</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+              />
             </div>
 
             {users.length > 0 && (

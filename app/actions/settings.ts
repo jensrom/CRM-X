@@ -152,6 +152,26 @@ export async function updateMyProfile(formData: FormData) {
   redirect("/settings");
 }
 
+/**
+ * Skift brugerens UI-sprog.
+ * Gemmer User.language (ISO 639-1) som læses i sessionen ved næste request.
+ * Hvis brugeren vælger et sprog der ikke findes i vores i18n-bibliotek,
+ * normaliserer vi til "da" som fallback.
+ */
+export async function updateMyLanguage(language: string): Promise<void> {
+  const session = await getSession();
+  const ALLOWED = new Set(["da", "en"]);
+  const normalized = ALLOWED.has(language) ? language : "da";
+
+  await db.user.update({
+    where: { id: session.user.id! },
+    data: { language: normalized } as any,
+  });
+
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+}
+
 // Faktura-konfiguration (tenant-niveau)
 export async function updateInvoiceConfig(formData: FormData) {
   const session = await getSession();
