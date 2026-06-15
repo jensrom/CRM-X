@@ -506,4 +506,13 @@ function Section({ title, icon: Icon, children, action, muted }: { title: string
 function StatCard({ label, value, icon: Icon, href, tone }: { label: string; value: number; icon: any; href?: string; tone?: "amber" | "neutral"; }) {
   const ring = tone === "amber" ? "border-amber-200 bg-amber-50/40" : "border-border bg-secondary/30";
   const inner = (
-    <div className={`p-3 rounded-lg border ${ring} hover:bg-secondary/50 tr
+    <div className={`p-3 rounded-lg border ${ring} hover:bg-secondary/50 transition-colors`}>
+      <div className="flex items-center gap-2 text-muted-foreground mb-1">
+        <Icon className="h-3.5 w-3.5" />
+        <span className="text-[11px] uppercase tracking-wide">{label}</span>
+      </div>
+      <p className="text-xl font-bold">{value}</p>
+    </div>
+  );
+  return href ? <Link href={href}>{inner}</Link> : inner;
+}

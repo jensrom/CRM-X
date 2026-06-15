@@ -154,4 +154,15 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 <textarea name="notes" rows={3} defaultValue={lead.notes ?? ""} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
               </div>
               <div className="flex items-center justify-between pt-2">
-                <Button type="submit" size="md">Gem ændringer</Bu
+                <Button type="submit" size="md">Gem ændringer</Button>
+                <Button type="submit" formAction={handleDelete} variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-3.5 w-3.5" /> Slet lead
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
