@@ -244,6 +244,11 @@ export async function getCompanyFull(id: string) {
         orderBy: { issueDate: "desc" },
         take: 50,
       },
+      quotes: {
+        include: { lines: true, deal: { select: { id: true, title: true } } },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      },
       activities: {
         include: { user: { select: { id: true, name: true } } },
         orderBy: { createdAt: "desc" },

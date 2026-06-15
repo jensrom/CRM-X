@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { StageSwitcher } from "@/components/pipeline/StageSwitcher";
 import { DealProductsPanel } from "@/components/pipeline/DealProductsPanel";
 import { WonDealButton } from "@/components/pipeline/WonDealButton";
+import { GenerateQuoteButton } from "@/components/pipeline/GenerateQuoteButton";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -180,6 +181,41 @@ export default async function DealDetailPage({
             availableProducts={productOptions}
             isClosed={isClosed}
           />
+
+          {/* Tilbud-genererings-flow — kun naar der er produkter at tilbyde */}
+          {!isClosed && dealProductLines.length > 0 && (
+            <div className="bg-violet-50/40 border border-violet-200 rounded-xl p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-violet-900">
+                  {(deal.quotes ?? []).length > 0
+                    ? `Tilbud sendt (${(deal.quotes ?? []).length})`
+                    : "Klar til at sende tilbud?"}
+                </p>
+                <p className="text-xs text-violet-700/80 mt-0.5">
+                  Generér tilbud fra produkterne — accepterede tilbud konverteres til faktura med ét klik.
+                </p>
+                {(deal.quotes ?? []).length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {(deal.quotes ?? []).map((q: any) => (
+                      <Link
+                        key={q.id}
+                        href={`/quotes/${q.id}?from=${encodeURIComponent(`/pipeline/${deal.id}`)}`}
+                        className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-white border border-violet-200 hover:border-violet-400 transition-colors"
+                      >
+                        Q-{String(q.number).padStart(4, "0")}
+                        <span className="text-violet-600">·</span>
+                        <span className="capitalize">{q.status}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <GenerateQuoteButton
+                dealId={deal.id}
+                hasExistingQuote={(deal.quotes ?? []).length > 0}
+              />
+            </div>
+          )}
 
           {/* Vundet-knap — kun før dealen er lukket */}
           {!isClosed && dealProductLines.length > 0 && (

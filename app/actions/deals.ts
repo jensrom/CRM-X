@@ -46,6 +46,13 @@ export async function getDeal(id: string) {
         select: { id: true, number: true, status: true, issueDate: true },
         orderBy: { issueDate: "desc" },
       },
+      quotes: {
+        select: {
+          id: true, number: true, status: true, title: true,
+          validUntil: true, convertedToInvoiceId: true, createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 }

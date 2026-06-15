@@ -16,6 +16,7 @@ import {
   FolderKanban,
   Ticket as TicketIcon,
   Scissors,
+  FileSignature,
   Receipt,
   Activity,
 } from "lucide-react";
@@ -27,6 +28,7 @@ export type CompanyTabKey =
   | "projekter"
   | "tickets"
   | "klippekort"
+  | "tilbud"
   | "fakturaer"
   | "aktivitet";
 
@@ -44,6 +46,7 @@ interface Props {
     projekter: number;
     tickets: number;
     klippekort: number;
+    tilbud: number;
     fakturaer: number;
     aktivitet: number;
   };
@@ -64,6 +67,7 @@ export function CompanyTabBar({ counts, basePath }: Props) {
     { key: "projekter",  label: "Projekter",  icon: FolderKanban, count: counts.projekter },
     { key: "tickets",    label: "Tickets",    icon: TicketIcon,   count: counts.tickets },
     { key: "klippekort", label: "Klippekort", icon: Scissors,     count: counts.klippekort },
+    { key: "tilbud",     label: "Tilbud",     icon: FileSignature,count: counts.tilbud },
     { key: "fakturaer",  label: "Fakturaer",  icon: Receipt,      count: counts.fakturaer },
     { key: "aktivitet",  label: "Aktivitet",  icon: Activity,     count: counts.aktivitet },
   ];

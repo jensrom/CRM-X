@@ -8,7 +8,7 @@ import {
   Building2, Phone, Mail, Globe, MapPin, Hash,
   Users, Package, Ticket as TicketIcon, Pencil, ChevronRight,
   Key, FolderKanban, Scissors, Receipt, Activity as ActivityIcon, Plus,
-  CheckCircle2, XCircle, AlertTriangle, Clock,
+  CheckCircle2, XCircle, AlertTriangle, Clock, FileSignature, ArrowRight,
 } from "lucide-react";
 import { formatDate, formatCurrency, TICKET_STATUS, TICKET_PRIORITY, formatRef, PROJECT_STATUS, INVOICE_STATUS, formatIndustry } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
@@ -38,6 +38,7 @@ export default async function CompanyDetailPage({
     projekter:  company.projects.length,
     tickets:    company.tickets.length,
     klippekort: company.hourBundles.length,
+    tilbud:     (company as any).quotes?.length ?? 0,
     fakturaer:  company.invoices.length,
     aktivitet:  company.activities.length,
   };
@@ -61,6 +62,7 @@ export default async function CompanyDetailPage({
       {tab === "projekter"  && <ProjekterTab company={company} />}
       {tab === "tickets"    && <TicketsTab   company={company} />}
       {tab === "klippekort" && <KlippekortTab company={company} />}
+      {tab === "tilbud"     && <TilbudTab company={company} />}
       {tab === "fakturaer"  && <FakturaerTab company={company} />}
       {tab === "aktivitet"  && <AktivitetTab company={company} />}
     </>
@@ -435,6 +437,98 @@ function BundleCard({ b, from }: { b: any; from?: string }) {
         {b.expiresAt && <p className="text-[11px] text-muted-foreground mt-1.5">Udløber {formatDate(b.expiresAt)}</p>}
       </div>
     </Link>
+  );
+}
+
+function TilbudTab({ company }: { company: any }) {
+  const quotes = company.quotes ?? [];
+  const now = new Date();
+  if (quotes.length === 0) {
+    return (
+      <EmptyState
+        icon={FileSignature}
+        title="Ingen tilbud"
+        description="Opret tilbud manuelt eller generér fra et deal i pipelinen."
+      />
+    );
+  }
+
+  // Decorate med "expired"-status hvis validUntil er passeret
+  const decorated = quotes.map((q: any) => {
+    const expired = q.validUntil && new Date(q.validUntil) < now && ["draft","sent"].includes(q.status);
+    return { ...q, _displayStatus: expired ? "expired" : q.status };
+  });
+  const open      = decorated.filter((q: any) => ["draft","sent"].includes(q._displayStatus));
+  const closed    = decorated.filter((q: any) => !["draft","sent"].includes(q._displayStatus));
+
+  const QSTATUS: Record<string, { label: string; bg: string }> = {
+    draft:    { label: "Kladde",    bg: "bg-slate-100 text-slate-700" },
+    sent:     { label: "Sendt",     bg: "bg-blue-100 text-blue-700" },
+    accepted: { label: "Accepteret",bg: "bg-emerald-100 text-emerald-700" },
+    rejected: { label: "Afvist",    bg: "bg-red-100 text-red-700" },
+    expired:  { label: "Udløbet",   bg: "bg-amber-100 text-amber-700" },
+  };
+
+  const fromParam = `from=${encodeURIComponent(`/kunder/${company.id}?tab=tilbud`)}`;
+
+  return (
+    <div className="space-y-6">
+      <Section
+        title={`Åbne tilbud (${open.length})`}
+        icon={FileSignature}
+        action={<Link href={`/quotes/new`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Nyt tilbud</Button></Link>}
+      >
+        {open.length === 0
+          ? <EmptyState icon={FileSignature} title="Ingen åbne tilbud" description="Generér et tilbud — eller genbrug et fra pipelinen." />
+          : <QuoteList items={open} qstatus={QSTATUS} fromParam={fromParam} />}
+      </Section>
+      {closed.length > 0 && (
+        <Section title={`Lukkede (${closed.length})`} icon={CheckCircle2} muted>
+          <QuoteList items={closed} qstatus={QSTATUS} fromParam={fromParam} />
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function QuoteList({
+  items, qstatus, fromParam,
+}: {
+  items: any[];
+  qstatus: Record<string, { label: string; bg: string }>;
+  fromParam: string;
+}) {
+  return (
+    <div className="divide-y divide-border bg-card rounded-xl border border-border">
+      {items.map((q: any) => {
+        const subtotal = q.lines.reduce((s: number, l: any) => {
+          const base = Number(l.quantity) * Number(l.unitPrice);
+          const disc = Number(l.discountPct ?? 0);
+          return s + base * (1 - disc / 100);
+        }, 0);
+        const total = q.vatEnabled ? subtotal * (1 + Number(q.vatPct) / 100) : subtotal;
+        const sm = qstatus[q._displayStatus] ?? qstatus.draft;
+        return (
+          <Link key={q.id} href={`/quotes/${q.id}?${fromParam}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+            <FileSignature className="h-4 w-4 text-muted-foreground" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium font-mono">Q-{String(q.number).padStart(4, "0")}</p>
+                {q.title && <span className="text-sm text-muted-foreground truncate">· {q.title}</span>}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {q.validUntil ? `Gyldig til ${formatDate(q.validUntil)}` : `Oprettet ${formatDate(q.createdAt)}`}
+                {q.deal && <> · fra deal: {q.deal.title}</>}
+                {q.convertedToInvoiceId && <> · konverteret <ArrowRight className="inline h-3 w-3" /> faktura</>}
+              </p>
+            </div>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${sm.bg}`}>{sm.label}</span>
+            <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 

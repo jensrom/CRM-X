@@ -85,6 +85,7 @@ model Tenant {
   projectPrefix String   @default("P")
   bundlePrefix  String   @default("KB")
   invoicePrefix String   @default("F")
+  quotePrefix   String   @default("Q")
 
   // --- Faktura-konfiguration (afsenderinfo + skabelon-tekster) ---
   // Bruges af /settings/invoice-config og PDF-render. Alle valgfri — falder
@@ -118,6 +119,7 @@ model Tenant {
   deals            Deal[]
   notifications    Notification[]
   invoices         Invoice[]
+  quotes           Quote[]
   userInvites      UserInvite[]
   bundlePricing    BundlePricingTier[]
   apiTokens        ApiToken[]
@@ -325,6 +327,7 @@ model Company {
   activities       Activity[]
   deals            Deal[]
   invoices         Invoice[]
+  quotes           Quote[]
 
   @@map("companies")
 }
@@ -748,6 +751,7 @@ model Deal {
   activities Activity[]
   products   DealProduct[] // Tilbudte produkter på dette deal
   invoices   Invoice[]     // Fakturaer genereret fra dette deal
+  quotes     Quote[]       // Tilbud genereret fra dette deal
 
   @@map("deals")
 }
@@ -926,6 +930,70 @@ model InvoiceLine {
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
   @@map("invoice_lines")
+}
+
+// ============================================================
+// TILBUD (QUOTES)
+// ────────────────────────────────────────────────────────────
+// Tilbud er fakturaens "før"-stadie. Status-flow:
+//   draft → sent → accepted → (konverteres til Invoice)
+//                ↘ rejected
+//                ↘ expired (auto efter validUntil)
+//
+// Når et tilbud accepteres genereres en Invoice fra linjerne
+// — convertedToInvoiceId binder de to sammen.
+// ============================================================
+
+model Quote {
+  id           String    @id @default(cuid())
+  tenantId     String
+  companyId    String
+  dealId       String?
+  number       Int
+  title        String?
+  status       String    @default("draft")
+  issueDate    DateTime  @default(now())
+  validUntil   DateTime?
+  currency     String    @default("DKK")
+  notes        String?   @db.Text
+  vatEnabled   Boolean   @default(true)
+  vatPct       Decimal   @db.Decimal(5,2) @default(25)
+  customerType String    @default("B2B")
+  convertedToInvoiceId String?  @unique
+  convertedAt          DateTime?
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  rejectedReason String?
+  createdById              String?
+  createdByImpersonatorId  String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company Company     @relation(fields: [companyId], references: [id])
+  deal    Deal?       @relation(fields: [dealId], references: [id])
+  lines   QuoteLine[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, status])
+  @@map("quotes")
+}
+
+model QuoteLine {
+  id          String  @id @default(cuid())
+  quoteId     String
+  description String
+  quantity    Decimal @db.Decimal(10, 3) @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  discountPct Decimal @db.Decimal(5, 2)  @default(0)
+  type        String  @default("manual")
+  sortOrder   Int     @default(0)
+  productId   String?
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@map("quote_lines")
 }
 
 // ============================================================
