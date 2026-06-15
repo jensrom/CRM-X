@@ -45,15 +45,15 @@ export default async function CompanyDetailPage({
   return (
     <>
       <AppTopbar pageTitle={company.name} />
-      <BackButton href="/companies" label="Kunder" />
+      <BackButton href="/kunder" label="Kunder" />
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
-        <Link href="/companies" className="hover:text-foreground transition-colors">Kunder</Link>
+        <Link href="/kunder" className="hover:text-foreground transition-colors">Kunder</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-foreground font-medium">{company.name}</span>
       </div>
 
       <CompanyHeader company={company} invoiceEmail={invoiceEmail} />
-      <CompanyTabBar counts={counts} basePath={`/companies/${company.id}`} />
+      <CompanyTabBar counts={counts} basePath={`/kunder/${company.id}`} />
 
       {tab === "overblik"   && <OverblikTab company={company} />}
       {tab === "produkter"  && <ProdukterTab company={company} />}
@@ -88,7 +88,7 @@ function CompanyHeader({ company, invoiceEmail }: { company: any; invoiceEmail: 
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Link href={`/companies/${company.id}/edit`}>
+          <Link href={`/kunder/${company.id}/edit`}>
             <Button variant="ghost" size="sm"><Pencil className="h-3.5 w-3.5" /> Rediger</Button>
           </Link>
           <DeleteCompanyDialog
@@ -159,7 +159,7 @@ function OverblikTab({ company }: { company: any }) {
       </Section>
 
       <Section title={`Aktive produkter (${activeProducts.length})`} icon={Package}
-        action={<Link href={`/companies/${company.id}?tab=produkter`}><Button variant="ghost" size="sm">Se alle</Button></Link>}>
+        action={<Link href={`/kunder/${company.id}?tab=produkter`}><Button variant="ghost" size="sm">Se alle</Button></Link>}>
         {activeProducts.length === 0
           ? <EmptyState icon={Package} title="Ingen aktive produkter" description="Tilkobl et produkt fra produkt-tab'en." />
           : <div className="space-y-2">
@@ -169,10 +169,10 @@ function OverblikTab({ company }: { company: any }) {
 
       <Section title="Status" icon={ActivityIcon}>
         <div className="grid grid-cols-2 gap-3">
-          <StatCard label="Åbne tickets" value={openTickets.length} icon={TicketIcon} href={`/companies/${company.id}?tab=tickets`} tone={openTickets.length > 0 ? "amber" : "neutral"} />
-          <StatCard label="Aktive projekter" value={activeProjects.length} icon={FolderKanban} href={`/companies/${company.id}?tab=projekter`} />
-          <StatCard label="Aktive licenser" value={activeLicenses.length} icon={Key} href={`/companies/${company.id}?tab=licenser`} />
-          <StatCard label="Klippekort" value={company.hourBundles.filter((b: any) => b.isActive).length} icon={Scissors} href={`/companies/${company.id}?tab=klippekort`} />
+          <StatCard label="Åbne tickets" value={openTickets.length} icon={TicketIcon} href={`/kunder/${company.id}?tab=tickets`} tone={openTickets.length > 0 ? "amber" : "neutral"} />
+          <StatCard label="Aktive projekter" value={activeProjects.length} icon={FolderKanban} href={`/kunder/${company.id}?tab=projekter`} />
+          <StatCard label="Aktive licenser" value={activeLicenses.length} icon={Key} href={`/kunder/${company.id}?tab=licenser`} />
+          <StatCard label="Klippekort" value={company.hourBundles.filter((b: any) => b.isActive).length} icon={Scissors} href={`/kunder/${company.id}?tab=klippekort`} />
         </div>
       </Section>
     </div>
@@ -185,7 +185,7 @@ function ProdukterTab({ company }: { company: any }) {
   return (
     <div className="space-y-6">
       <Section title={`Aktive produkter (${active.length})`} icon={Package}
-        action={<Link href={`/companies/${company.id}/products/add`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Tilkobl produkt</Button></Link>}>
+        action={<Link href={`/kunder/${company.id}/products/add`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Tilkobl produkt</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={Package} title="Ingen aktive produkter" description="Tilkobl et SaaS-produkt, en licens eller en konsulentydelse." />
           : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{active.map((cp: any) => <ProductRowCard key={cp.id} cp={cp} />)}</div>}
@@ -266,11 +266,11 @@ function LicenserTab({ company }: { company: any }) {
         action={<Link href={`/licenses/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Opret licens</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={Key} title="Ingen aktive licenser" description="Opret en licens for kunden - fx software-licens med udløb og fil-upload." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((l: any) => <LicenseRow key={l.id} l={l} from={`/companies/${company.id}?tab=licenser`} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((l: any) => <LicenseRow key={l.id} l={l} from={`/kunder/${company.id}?tab=licenser`} />)}</div>}
       </Section>
       {expired.length > 0 && (
         <Section title={`Udløbet (${expired.length})`} icon={AlertTriangle} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{expired.map((l: any) => <LicenseRow key={l.id} l={l} expired from={`/companies/${company.id}?tab=licenser`} />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{expired.map((l: any) => <LicenseRow key={l.id} l={l} expired from={`/kunder/${company.id}?tab=licenser`} />)}</div>
         </Section>
       )}
     </div>
@@ -308,11 +308,11 @@ function ProjekterTab({ company }: { company: any }) {
         action={<Link href={`/projects/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Nyt projekt</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={FolderKanban} title="Ingen aktive projekter" description="Opret et projekt for kunden." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((p: any) => <ProjectRow key={p.id} p={p} from={`/companies/${company.id}?tab=projekter`} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{active.map((p: any) => <ProjectRow key={p.id} p={p} from={`/kunder/${company.id}?tab=projekter`} />)}</div>}
       </Section>
       {closed.length > 0 && (
         <Section title={`Afsluttede (${closed.length})`} icon={CheckCircle2} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-80">{closed.map((p: any) => <ProjectRow key={p.id} p={p} closed from={`/companies/${company.id}?tab=projekter`} />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-80">{closed.map((p: any) => <ProjectRow key={p.id} p={p} closed from={`/kunder/${company.id}?tab=projekter`} />)}</div>
         </Section>
       )}
     </div>
@@ -350,11 +350,11 @@ function TicketsTab({ company }: { company: any }) {
         action={<Link href={`/support/tickets/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Ny ticket</Button></Link>}>
         {open.length === 0
           ? <EmptyState icon={TicketIcon} title="Ingen åbne tickets" description="Alt er under kontrol - eller opret en ticket på kunden." />
-          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{open.map((t: any) => <TicketRow key={t.id} t={t} from={`/companies/${company.id}?tab=tickets`} />)}</div>}
+          : <div className="divide-y divide-border bg-card rounded-xl border border-border">{open.map((t: any) => <TicketRow key={t.id} t={t} from={`/kunder/${company.id}?tab=tickets`} />)}</div>}
       </Section>
       {closed.length > 0 && (
         <Section title={`Lukkede tickets (${closed.length})`} icon={CheckCircle2} muted>
-          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{closed.slice(0, 20).map((t: any) => <TicketRow key={t.id} t={t} closed from={`/companies/${company.id}?tab=tickets`} />)}</div>
+          <div className="divide-y divide-border bg-card rounded-xl border border-border opacity-70">{closed.slice(0, 20).map((t: any) => <TicketRow key={t.id} t={t} closed from={`/kunder/${company.id}?tab=tickets`} />)}</div>
         </Section>
       )}
     </div>
@@ -400,11 +400,11 @@ function KlippekortTab({ company }: { company: any }) {
         action={<Link href={`/klippekort/new?companyId=${company.id}`}><Button size="sm"><Plus className="h-3.5 w-3.5" /> Nyt klippekort</Button></Link>}>
         {active.length === 0
           ? <EmptyState icon={Scissors} title="Ingen aktive klippekort" description="Sælg en timepakke til kunden." />
-          : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{active.map((b: any) => <BundleCard key={b.id} b={b} from={`/companies/${company.id}?tab=klippekort`} />)}</div>}
+          : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{active.map((b: any) => <BundleCard key={b.id} b={b} from={`/kunder/${company.id}?tab=klippekort`} />)}</div>}
       </Section>
       {used.length > 0 && (
         <Section title={`Opbrugte / inaktive (${used.length})`} icon={CheckCircle2} muted>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">{used.map((b: any) => <BundleCard key={b.id} b={b} from={`/companies/${company.id}?tab=klippekort`} />)}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-70">{used.map((b: any) => <BundleCard key={b.id} b={b} from={`/kunder/${company.id}?tab=klippekort`} />)}</div>
         </Section>
       )}
     </div>
@@ -447,7 +447,7 @@ function FakturaerTab({ company }: { company: any }) {
           const subtotal = inv.lines.reduce((s: number, l: any) => s + Number(l.quantity) * Number(l.unitPrice) * (1 - Number(l.discountPct ?? 0) / 100), 0);
           const total = inv.vatEnabled ? subtotal * (1 + Number(inv.vatPct) / 100) : subtotal;
           return (
-            <Link key={inv.id} href={`/invoices/${inv.id}?from=${encodeURIComponent(`/companies/${company.id}?tab=fakturaer`)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+            <Link key={inv.id} href={`/invoices/${inv.id}?from=${encodeURIComponent(`/kunder/${company.id}?tab=fakturaer`)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
               <Receipt className="h-4 w-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium">F-{String(inv.number).padStart(4, "0")}</p>
@@ -506,13 +506,4 @@ function Section({ title, icon: Icon, children, action, muted }: { title: string
 function StatCard({ label, value, icon: Icon, href, tone }: { label: string; value: number; icon: any; href?: string; tone?: "amber" | "neutral"; }) {
   const ring = tone === "amber" ? "border-amber-200 bg-amber-50/40" : "border-border bg-secondary/30";
   const inner = (
-    <div className={`p-3 rounded-lg border ${ring} hover:bg-secondary/50 transition-colors`}>
-      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-        <Icon className="h-3.5 w-3.5" />
-        <span className="text-[11px] uppercase tracking-wide">{label}</span>
-      </div>
-      <p className="text-xl font-bold">{value}</p>
-    </div>
-  );
-  return href ? <Link href={href}>{inner}</Link> : inner;
-}
+    <div className={`p-3 rounded-lg border ${ring} hover:bg-secondary/50 tr

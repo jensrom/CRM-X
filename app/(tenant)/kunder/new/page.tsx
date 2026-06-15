@@ -16,7 +16,7 @@ export default function NewCompanyPage() {
           title="Opret kunde"
           description="Udfyld stamoplysninger for det nye kunde"
           actions={
-            <Link href="/companies">
+            <Link href="/kunder">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="h-4 w-4" />
                 Tilbage
@@ -88,7 +88,7 @@ export default function NewCompanyPage() {
 
           <div className="flex items-center gap-3 pt-2">
             <Button type="submit" size="lg">Opret kunde</Button>
-            <Link href="/companies">
+            <Link href="/kunder">
               <Button type="button" variant="ghost" size="lg">Annuller</Button>
             </Link>
           </div>

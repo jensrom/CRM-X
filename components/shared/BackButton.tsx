@@ -63,8 +63,8 @@ export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
 
 function labelFromPath(path: string): string | null {
   const pathOnly = path.split("?")[0];
-  if (pathOnly.startsWith("/companies/")) return "Kunde";
-  if (pathOnly === "/companies")          return "Kunder";
+  if (pathOnly.startsWith("/kunder/")) return "Kunde";
+  if (pathOnly === "/kunder")          return "Kunder";
   if (pathOnly.startsWith("/pipeline/"))  return "Deal";
   if (pathOnly === "/pipeline")           return "Pipeline";
   if (pathOnly.startsWith("/projects/"))  return "Projekt";

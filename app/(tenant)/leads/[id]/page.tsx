@@ -97,7 +97,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             {isConverted && lead.convertedCompanyId && (
               <div className="mt-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                 <p className="text-xs text-emerald-700 font-medium">Konverteret til kunde</p>
-                <Link href={`/companies/${lead.convertedCompanyId}`} className="text-xs text-emerald-600 hover:underline">
+                <Link href={`/kunder/${lead.convertedCompanyId}`} className="text-xs text-emerald-600 hover:underline">
                   Se kunde
                 </Link>
               </div>
@@ -154,15 +154,4 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 <textarea name="notes" rows={3} defaultValue={lead.notes ?? ""} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
               </div>
               <div className="flex items-center justify-between pt-2">
-                <Button type="submit" size="md">Gem ændringer</Button>
-                                  <Button type="submit" formAction={handleDelete} variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                    <Trash2 className="h-3.5 w-3.5" /> Slet lead
-                  </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+                <Button type="submit" size="md">Gem ændringer</Bu

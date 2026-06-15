@@ -337,7 +337,7 @@ export async function markDealAsWon(dealId: string): Promise<{ invoiceId: string
 
   revalidatePath("/pipeline");
   revalidatePath(`/pipeline/${dealId}`);
-  revalidatePath(`/companies/${deal.companyId}`);
+  revalidatePath(`/kunder/${deal.companyId}`);
   revalidatePath("/invoices");
 
   return { invoiceId: result.id };

@@ -107,7 +107,7 @@ export default async function LicenseDetailPage({ params }: { params: Promise<{ 
             <div className="space-y-2.5 text-sm">
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Building2 className="h-3.5 w-3.5 shrink-0" />
-                <Link href={`/companies/${license.company.id}`} className="text-primary hover:underline">
+                <Link href={`/kunder/${license.company.id}`} className="text-primary hover:underline">
                   {license.company.name}
                 </Link>
               </div>

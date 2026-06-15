@@ -40,7 +40,7 @@ export async function createContact(formData: FormData) {
   });
 
   revalidatePath("/contacts");
-  if (data.companyId) revalidatePath(`/companies/${data.companyId}`);
+  if (data.companyId) revalidatePath(`/kunder/${data.companyId}`);
   redirect(`/contacts/${contact.id}`);
 }
 

@@ -164,7 +164,7 @@ export function CompanyCsvImport() {
       const res = await importCompaniesFromCsv(validRows);
       setResult(res);
       if (res.ok > 0) {
-        setTimeout(() => router.push("/companies"), 2000);
+        setTimeout(() => router.push("/kunder"), 2000);
       }
     } catch (err: any) {
       setResult({ ok: 0, errors: [err.message ?? "Ukendt fejl"] });

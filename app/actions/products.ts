@@ -218,9 +218,9 @@ export async function assignProductToCompany(formData: FormData) {
 
   const companyId = formData.get("companyId") as string;
   const productId = formData.get("productId") as string;
-  revalidatePath(`/companies/${companyId}`);
+  revalidatePath(`/kunder/${companyId}`);
   revalidatePath(`/products/${productId}`);
-  redirect(`/companies/${companyId}`);
+  redirect(`/kunder/${companyId}`);
 }
 
 export async function removeCustomerProduct(id: string, productId: string) {

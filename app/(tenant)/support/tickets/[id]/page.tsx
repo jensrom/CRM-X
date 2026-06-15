@@ -92,7 +92,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               {ticket.company && (
                 <div className="flex items-center gap-2.5 text-sm">
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <Link href={`/companies/${ticket.company.id}`} className="text-primary hover:underline">
+                  <Link href={`/kunder/${ticket.company.id}`} className="text-primary hover:underline">
                     {ticket.company.name}
                   </Link>
                 </div>

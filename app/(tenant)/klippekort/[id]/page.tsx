@@ -135,7 +135,7 @@ export default async function BundleDetailPage({ params }: { params: Promise<{ i
                   KB-{String(bundle.number).padStart(4, "0")}
                 </p>
                 <p className="font-semibold">{bundle.name ?? `${bundle.totalHours}t klippekort`}</p>
-                <Link href={`/companies/${bundle.company.id}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
+                <Link href={`/kunder/${bundle.company.id}`} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors">
                   <Building2 className="h-3 w-3" />{bundle.company.name}
                 </Link>
               </div>

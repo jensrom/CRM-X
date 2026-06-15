@@ -129,8 +129,8 @@ export async function convertLeadToCompany(formData: FormData) {
   });
 
   revalidatePath("/leads");
-  revalidatePath("/companies");
-  redirect(`/companies/${company.id}`);
+  revalidatePath("/kunder");
+  redirect(`/kunder/${company.id}`);
 }
 
 export async function deleteLead(id: string) {

@@ -6,7 +6,7 @@ export default function ImportCompaniesPage() {
   return (
     <>
       <AppTopbar pageTitle="Importer kunder" />
-      <BackButton href="/companies" label="Kunder" />
+      <BackButton href="/kunder" label="Kunder" />
       <CompanyCsvImport />
     </>
   );

@@ -53,6 +53,16 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // --- Bagudkompat: /companies/* → /kunder/* ---
+  // URL'en blev omdoebt da vi globalt skiftede "Firma" → "Kunde" — gamle
+  // bookmarks/eksterne links skal stadig virke. 308 permanent redirect saa
+  // browser/sogemaskiner husker den nye URL.
+  if (url.pathname === "/companies" || url.pathname.startsWith("/companies/")) {
+    const newPath = url.pathname.replace(/^\/companies/, "/kunder");
+    const redirectUrl = new URL(newPath + url.search, req.url);
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   // --- Admin portal ---
   // To indgange begge ender i /admin gruppen:
   //   1. crmadmin.plesnertech.dk (officielt — bruges af super_admins i prod)

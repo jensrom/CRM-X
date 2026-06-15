@@ -44,8 +44,8 @@ export async function createCompany(formData: FormData) {
     },
   });
 
-  revalidatePath("/companies");
-  redirect(`/companies/${company.id}`);
+  revalidatePath("/kunder");
+  redirect(`/kunder/${company.id}`);
 }
 
 export async function updateCompany(id: string, formData: FormData) {
@@ -64,9 +64,9 @@ export async function updateCompany(id: string, formData: FormData) {
     },
   });
 
-  revalidatePath(`/companies/${id}`);
-  revalidatePath("/companies");
-  redirect(`/companies/${id}`);
+  revalidatePath(`/kunder/${id}`);
+  revalidatePath("/kunder");
+  redirect(`/kunder/${id}`);
 }
 
 export async function deleteCompany(id: string) {
@@ -78,8 +78,8 @@ export async function deleteCompany(id: string) {
     data: { isActive: false },
   });
 
-  revalidatePath("/companies");
-  redirect("/companies");
+  revalidatePath("/kunder");
+  redirect("/kunder");
 }
 
 export async function getCompanies(search?: string) {
@@ -151,7 +151,7 @@ export async function importCompaniesFromCsv(
     }
   }
 
-  revalidatePath("/companies");
+  revalidatePath("/kunder");
   return { ok, errors };
 }
 
@@ -313,6 +313,6 @@ export async function createCompanyInline(formData: FormData): Promise<{ id: str
     select: { id: true, name: true },
   });
 
-  revalidatePath("/companies");
+  revalidatePath("/kunder");
   return company;
 }

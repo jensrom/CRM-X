@@ -37,12 +37,12 @@ export default async function AddCompanyProductPage({
   return (
     <>
       <AppTopbar pageTitle={`Tilknyt produkt — ${company.name}`} />
-      <BackButton href={`/companies/${id}`} label={company.name} />
+      <BackButton href={`/kunder/${id}`} label={company.name} />
 
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
-        <Link href="/companies" className="hover:text-foreground transition-colors">Kunder</Link>
+        <Link href="/kunder" className="hover:text-foreground transition-colors">Kunder</Link>
         <ChevronRight className="h-3.5 w-3.5" />
-        <Link href={`/companies/${id}`} className="hover:text-foreground transition-colors">{company.name}</Link>
+        <Link href={`/kunder/${id}`} className="hover:text-foreground transition-colors">{company.name}</Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-foreground font-medium">Tilknyt produkt</span>
       </div>

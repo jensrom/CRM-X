@@ -25,13 +25,13 @@ export default async function CompaniesPage({
         description={`${companies.length} aktive kunder`}
         actions={
           <div className="flex items-center gap-2">
-            <Link href="/companies/import">
+            <Link href="/kunder/import">
               <Button variant="ghost" size="md">
                 <Upload className="h-4 w-4" />
                 CSV-import
               </Button>
             </Link>
-            <a href="/companies/new">
+            <a href="/kunder/new">
               <Button size="md">
                 <Plus className="h-4 w-4" />
                 Opret kunde
@@ -59,7 +59,7 @@ export default async function CompaniesPage({
           title="Ingen kunder endnu"
           description="Opret dit første kunde for at komme i gang."
           action={
-            <a href="/companies/new">
+            <a href="/kunder/new">
               <Button size="sm"><Plus className="h-3.5 w-3.5" />Opret kunde</Button>
             </a>
           }
@@ -83,7 +83,7 @@ export default async function CompaniesPage({
                   className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors cursor-pointer group"
                 >
                   <td className="px-5 py-3.5">
-                    <Link href={`/companies/${company.id}`} className="block">
+                    <Link href={`/kunder/${company.id}`} className="block">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                           <Building2 className="h-4 w-4 text-primary" />
@@ -100,7 +100,7 @@ export default async function CompaniesPage({
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden md:table-cell">
-                    <Link href={`/companies/${company.id}`} className="block">
+                    <Link href={`/kunder/${company.id}`} className="block">
                       {company.city ? (
                         <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5" />
@@ -112,7 +112,7 @@ export default async function CompaniesPage({
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden lg:table-cell">
-                    <Link href={`/companies/${company.id}`} className="block space-y-0.5">
+                    <Link href={`/kunder/${company.id}`} className="block space-y-0.5">
                       {company.phone && (
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Phone className="h-3 w-3" />{company.phone}
@@ -126,7 +126,7 @@ export default async function CompaniesPage({
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden lg:table-cell">
-                    <Link href={`/companies/${company.id}`} className="block">
+                    <Link href={`/kunder/${company.id}`} className="block">
                       <div className="flex flex-wrap gap-1">
                         {company.customerProducts.slice(0, 2).map((cp) => (
                           <Badge key={cp.id} variant="default">
@@ -143,7 +143,7 @@ export default async function CompaniesPage({
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden xl:table-cell">
-                    <Link href={`/companies/${company.id}`} className="block">
+                    <Link href={`/kunder/${company.id}`} className="block">
                       <span className="text-sm text-muted-foreground">{formatDate(company.createdAt)}</span>
                     </Link>
                   </td>

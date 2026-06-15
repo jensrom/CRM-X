@@ -314,7 +314,7 @@ export function AssignProductForm({ companyId, companyName, products }: Props) {
           <Package className="h-4 w-4" />
           Tilknyt produkt
         </Button>
-        <Link href={`/companies/${companyId}`}>
+        <Link href={`/kunder/${companyId}`}>
           <Button type="button" variant="ghost" size="md">Annuller</Button>
         </Link>
       </div>

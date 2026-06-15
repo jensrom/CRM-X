@@ -94,7 +94,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
               {deal.company && (
                 <div className="flex items-center gap-2.5 text-sm">
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <Link href={`/companies/${deal.company.id}`} className="text-primary hover:underline">
+                  <Link href={`/kunder/${deal.company.id}`} className="text-primary hover:underline">
                     {deal.company.name}
                   </Link>
                 </div>
@@ -242,15 +242,4 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                   <div key={act.id} className="flex items-start gap-3 px-5 py-3">
                     <div>
                       <p className="text-sm font-medium">{act.subject}</p>
-                      <p className="text-xs text-muted-foreground">{formatDate(act.createdAt)}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+                      <p className="te

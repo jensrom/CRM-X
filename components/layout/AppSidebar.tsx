@@ -69,7 +69,7 @@ const NAV_SECTIONS: {
   {
     section: "Kunder",           sectionKey: "nav.section.customers",
     items: [
-      { i18nKey: "nav.customers", label: "Kunder", href: "/companies", icon: Building2 },
+      { i18nKey: "nav.customers", label: "Kunder", href: "/kunder", icon: Building2 },
       { i18nKey: "nav.contacts", label: "Kontakter", href: "/contacts", icon: Users },
     ],
   },

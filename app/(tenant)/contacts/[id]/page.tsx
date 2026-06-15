@@ -55,7 +55,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               {contact.company && (
                 <div className="flex items-center gap-2.5 text-sm">
                   <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <Link href={`/companies/${contact.company.id}`} className="text-primary hover:underline">
+                  <Link href={`/kunder/${contact.company.id}`} className="text-primary hover:underline">
                     {contact.company.name}
                   </Link>
                 </div>

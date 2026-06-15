@@ -148,7 +148,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                 {product.customerProducts.map((cp) => (
                   <div key={cp.id} className="flex items-center justify-between">
                     <Link
-                      href={`/companies/${cp.company.id}`}
+                      href={`/kunder/${cp.company.id}`}
                       className="flex items-center gap-1.5 text-sm hover:text-primary transition-colors"
                     >
                       <Building2 className="h-3 w-3 text-muted-foreground" />
