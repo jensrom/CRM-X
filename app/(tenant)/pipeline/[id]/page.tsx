@@ -242,4 +242,15 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
                   <div key={act.id} className="flex items-start gap-3 px-5 py-3">
                     <div>
                       <p className="text-sm font-medium">{act.subject}</p>
-                      <p className="te
+                      <p className="text-xs text-muted-foreground">{formatDate(act.createdAt)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
