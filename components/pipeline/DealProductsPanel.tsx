@@ -160,12 +160,7 @@ function DealProductRow({
           <p className="text-[10px] text-muted-foreground">/ {billLabel}</p>
         </div>
         {canRemove && (
-          <form
-            action={async () => {
-              "use server";
-              await removeDealProduct(line.id, dealId);
-            }}
-          >
+          <form action={removeDealProduct.bind(null, line.id, dealId)}>
             <button
               type="submit"
               className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
