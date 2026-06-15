@@ -35,12 +35,19 @@ export async function CreatorBadge({
   compact = false,
   className = "",
 }: Props) {
-  // Hvis ingen creator-data, vis kun datoen
+  // Legacy data uden gemt opretter — vis tydeligt at navnet ikke er kendt
+  // saa brugeren forstaar at badge'n ER der, men informationen mangler.
+  // Nye oprettelser efter creator-traceback-migration vil have createdById sat.
   if (!createdById && !createdByImpersonatorId) {
     if (!createdAt) return null;
     return (
-      <span className={`text-xs text-muted-foreground ${className}`}>
-        {compact ? "" : "Oprettet "}{formatDate(createdAt)}
+      <span className={`inline-flex items-center gap-1.5 text-xs text-muted-foreground ${className}`}>
+        <User className="h-3 w-3 shrink-0 opacity-50" />
+        <span>
+          {compact ? "" : "Oprettet af "}
+          <span className="italic opacity-70">ukendt</span>
+          {" · "}{formatDate(createdAt)}
+        </span>
       </span>
     );
   }

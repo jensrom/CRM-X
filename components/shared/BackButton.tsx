@@ -36,23 +36,29 @@ export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
   }, []);
 
   const { target, displayLabel } = useMemo(() => {
+    // Knappen siger altid "Tilbage" — destinationen vises som tooltip.
+    // Brugeren skal ikke gætte hvor "Faktura"/"Kunde" foerer hen.
     const from = searchParams.get("from");
     if (from && from.startsWith("/") && !from.startsWith("//")) {
-      const fromLabel = labelFromPath(from);
-      return { target: from, displayLabel: fromLabel ?? label };
+      return { target: from, displayLabel: "Tilbage" };
     }
     if (referrer && referrer.startsWith("/") && !referrer.startsWith("//")) {
-      const refLabel = labelFromPath(referrer);
-      if (refLabel) {
-        return { target: referrer, displayLabel: refLabel };
-      }
+      return { target: referrer, displayLabel: "Tilbage" };
     }
-    return { target: href, displayLabel: label };
+    return { target: href, displayLabel: "Tilbage" };
   }, [searchParams, referrer, href, label]);
+
+  // Tooltip viser hvor knappen fører hen — fx "Tilbage til Kunder"
+  const destLabel = useMemo(() => {
+    if (!target) return null;
+    return labelFromPath(target);
+  }, [target]);
+  const tooltip = destLabel ? `Tilbage til ${destLabel}` : "Tilbage";
 
   return (
     <button
       onClick={() => (target ? router.push(target) : router.back())}
+      title={tooltip}
       className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group mb-4"
     >
       <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
