@@ -921,4 +921,60 @@ model InvoiceLine {
   isCredit    Boolean @default(false)
   sortOrder   Int     @default(0)
   timeLogId   String?
-  productId   Str
+  productId   String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_lines")
+}
+
+// ============================================================
+// NOTIFIKATIONER
+// ============================================================
+
+model Notification {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  type       String
+  title      String
+  message    String   @db.Text
+  isRead     Boolean  @default(false)
+  readAt     DateTime?
+  linkUrl    String?
+  relatedId  String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ============================================================
+// AUDIT LOG (append-only)
+// ============================================================
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  actorId      String?
+  actorEmail   String?
+  actorRole    String?
+  action       String
+  resourceType String
+  resourceId   String?
+  before       Json?
+  after        Json?
+  ipAddress    String?
+  userAgent    String?  @db.Text
+  outcome      String   @default("success")
+  message      String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([resourceType, resourceId])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
