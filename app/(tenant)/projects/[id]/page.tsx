@@ -25,6 +25,7 @@ import { CloseProjectDialog } from "@/components/projects/CloseProjectDialog";
 import { BackButton } from "@/components/shared/BackButton";
 import { BundleSearchSelect } from "@/components/shared/BundleSearchSelect";
 import { QrCode } from "@/components/shared/QrCode";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 
 function formatDur(min: number) {
   const h = Math.floor(min / 60);
@@ -124,6 +125,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <div className="flex items-center gap-1.5 mt-1">
                   <span className={`w-2 h-2 rounded-full ${st.dot}`} />
                   <span className="text-xs text-muted-foreground">{st.label}</span>
+                </div>
+                <div className="mt-1">
+                  <CreatorBadge
+                    createdById={(project as any).createdById}
+                    createdByImpersonatorId={(project as any).createdByImpersonatorId}
+                    createdAt={project.createdAt}
+                  />
                 </div>
               </div>
               <QrCode

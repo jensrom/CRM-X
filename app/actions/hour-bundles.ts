@@ -40,6 +40,11 @@ export async function getHourBundles(opts?: {
   const tenantId = session.user.tenantId;
 
   const search = opts?.search?.trim();
+  // Udtraek nummer fra søgestrenge som "KB-0010", "P-0010", "0010", "10"
+  // → vi forsøger at matche den numeriske del mod hourBundle.number OG project.number
+  const numberMatch = search ? search.match(/(\d+)/) : null;
+  const searchNumber = numberMatch ? parseInt(numberMatch[1], 10) : null;
+
   const searchFilter = search
     ? {
         OR: [
@@ -52,6 +57,17 @@ export async function getHourBundles(opts?: {
               },
             },
           },
+          // Match unikt klippekort-nummer (KB-XXXX → trækker tallet ud)
+          ...(searchNumber !== null
+            ? [
+                { number: searchNumber },
+                {
+                  projectBundles: {
+                    some: { project: { number: searchNumber } },
+                  },
+                },
+              ]
+            : []),
         ],
       }
     : {};

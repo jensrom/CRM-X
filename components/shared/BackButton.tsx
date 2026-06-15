@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 
 interface BackButtonProps {
   href?: string;
@@ -10,13 +10,30 @@ interface BackButtonProps {
 }
 
 // BackButton med "husk hvor jeg kom fra"-logik.
-// Laeser ?from= searchParam foerst. Hvis sat, navigeres dertil.
-// Hvis ikke, falder tilbage til href-prop'en eller router.back().
-// Sikkerhed: kun relative paths (start med /) accepteres.
+// Praeference-rækkefoelge:
+//   1) ?from= searchParam (eksplicit besked om hvor man kom fra)
+//   2) document.referrer (samme origin, ikke same path)
+//   3) href-prop (default-mål for siden)
+//   4) router.back() som sidste udvej
 
 export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [referrer, setReferrer] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = document.referrer;
+    if (!ref) return;
+    try {
+      const refUrl = new URL(ref);
+      if (refUrl.origin === window.location.origin && refUrl.pathname !== window.location.pathname) {
+        setReferrer(refUrl.pathname + refUrl.search);
+      }
+    } catch {
+      // Ignorer ugyldige referrers
+    }
+  }, []);
 
   const { target, displayLabel } = useMemo(() => {
     const from = searchParams.get("from");
@@ -24,8 +41,14 @@ export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
       const fromLabel = labelFromPath(from);
       return { target: from, displayLabel: fromLabel ?? label };
     }
+    if (referrer && referrer.startsWith("/") && !referrer.startsWith("//")) {
+      const refLabel = labelFromPath(referrer);
+      if (refLabel) {
+        return { target: referrer, displayLabel: refLabel };
+      }
+    }
     return { target: href, displayLabel: label };
-  }, [searchParams, href, label]);
+  }, [searchParams, referrer, href, label]);
 
   return (
     <button
@@ -51,5 +74,10 @@ function labelFromPath(path: string): string | null {
   if (pathOnly.startsWith("/contacts/"))  return "Kontakt";
   if (pathOnly === "/contacts")           return "Kontakter";
   if (pathOnly.startsWith("/support/tickets/")) return "Ticket";
+  if (pathOnly === "/support/tickets")    return "Tickets";
+  if (pathOnly.startsWith("/klippekort/"))return "Klippekort";
+  if (pathOnly === "/klippekort")         return "Klippekort";
+  if (pathOnly.startsWith("/invoices/"))  return "Faktura";
+  if (pathOnly === "/invoices")           return "Fakturaer";
   return null;
 }

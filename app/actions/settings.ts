@@ -160,7 +160,7 @@ export async function updateMyProfile(formData: FormData) {
  */
 export async function updateMyLanguage(language: string): Promise<void> {
   const session = await getSession();
-  const ALLOWED = new Set(["da", "en"]);
+  const ALLOWED = new Set(["da", "en", "sv", "no", "de"]);
   const normalized = ALLOWED.has(language) ? language : "da";
 
   await db.user.update({
