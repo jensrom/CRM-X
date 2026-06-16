@@ -40,8 +40,10 @@ async function getResendConfig(tenantId: string): Promise<ResendConfig | null> {
   }
 
   // Fallback til env (typisk dev/onboarding)
+  // Accepterer baade RESEND_FROM_ADDRESS og RESEND_FROM_EMAIL — sidstnaevnte
+  // er det navn der oprindeligt blev valgt i Vercel.
   const envKey = process.env.RESEND_API_KEY;
-  const envFrom = process.env.RESEND_FROM_ADDRESS;
+  const envFrom = process.env.RESEND_FROM_ADDRESS ?? process.env.RESEND_FROM_EMAIL;
   if (envKey && envFrom) {
     return { apiKey: envKey, fromAddress: envFrom };
   }
