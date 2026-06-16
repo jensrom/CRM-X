@@ -13,6 +13,7 @@ import { QrCode } from "@/components/shared/QrCode";
 import { SendMailDialog } from "@/components/shared/SendMailDialog";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEffectiveSystemMail } from "@/lib/email/effective-config";
 
 const STATUS_OPTS = [
   { value: "draft",     label: "Kladde" },
@@ -40,7 +41,7 @@ export default async function InvoiceDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const session = await auth();
-  const [invoice, mailMe, mailTenant] = await Promise.all([
+  const [invoice, mailMe, effectiveSystem] = await Promise.all([
     getInvoice(id),
     session?.user?.id
       ? db.user.findFirst({
@@ -49,10 +50,7 @@ export default async function InvoiceDetailPage({
         })
       : Promise.resolve(null),
     session?.user?.tenantId
-      ? db.tenant.findFirst({
-          where: { id: session.user.tenantId },
-          select: { systemEmailFromAddress: true },
-        })
+      ? getEffectiveSystemMail(session.user.tenantId)
       : Promise.resolve(null),
   ]);
   if (!invoice) notFound();
@@ -69,8 +67,8 @@ export default async function InvoiceDetailPage({
   const userMailbox = mailMe?.emailProvider && mailMe.connectedEmailAddress
     ? { provider: mailMe.emailProvider as "microsoft" | "google", address: mailMe.connectedEmailAddress }
     : null;
-  const systemMailbox = mailTenant?.systemEmailFromAddress
-    ? { address: mailTenant.systemEmailFromAddress }
+  const systemMailbox = effectiveSystem
+    ? { address: effectiveSystem.fromAddress }
     : null;
 
   async function handleEmailSubmit(formData: FormData) {

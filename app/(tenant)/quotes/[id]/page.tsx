@@ -19,6 +19,7 @@ import { SendQuoteMailDialog } from "@/components/quotes/SendQuoteMailDialog";
 import { lineTotal, type BillingIntervalSlug } from "@/lib/billing-intervals";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getEffectiveSystemMail } from "@/lib/email/effective-config";
 
 const STATUS_OPTS: Record<string, { label: string; bg: string }> = {
   draft:    { label: "Kladde",     bg: "bg-slate-100 text-slate-700" },
@@ -46,7 +47,7 @@ export default async function QuoteDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const session = await auth();
-  const [quote, allProducts, mailMe, mailTenant, primaryContact] = await Promise.all([
+  const [quote, allProducts, mailMe, effectiveSystem, primaryContact] = await Promise.all([
     getQuote(id),
     getProducts({ isActive: true }),
     session?.user?.id
@@ -56,10 +57,7 @@ export default async function QuoteDetailPage({
         })
       : Promise.resolve(null),
     session?.user?.tenantId
-      ? db.tenant.findFirst({
-          where: { id: session.user.tenantId },
-          select: { systemEmailFromAddress: true, systemEmailFromName: true },
-        })
+      ? getEffectiveSystemMail(session.user.tenantId)
       : Promise.resolve(null),
     // Find første aktive kontakt på kunden for default-mail-modtager
     db.contact.findFirst({
@@ -73,8 +71,8 @@ export default async function QuoteDetailPage({
   const userMailbox = mailMe?.emailProvider && mailMe.connectedEmailAddress
     ? { provider: mailMe.emailProvider as "microsoft" | "google", address: mailMe.connectedEmailAddress }
     : null;
-  const systemMailbox = mailTenant?.systemEmailFromAddress
-    ? { address: mailTenant.systemEmailFromAddress }
+  const systemMailbox = effectiveSystem
+    ? { address: effectiveSystem.fromAddress }
     : null;
 
   // Serialiser produkter til client-komponenten
