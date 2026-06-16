@@ -15,7 +15,7 @@
 
 import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Package, Plus, Trash2, X, Users, Receipt, Tag } from "lucide-react";
+import { Package, Plus, Trash2, X, Users, Receipt, Tag, Scissors, Clock } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import {
   BILLING_INTERVALS,
@@ -30,7 +30,7 @@ interface ProductOption {
   id: string;
   name: string;
   type: string;
-  pricingMode: "per_unit" | "per_user_per_period";
+  pricingMode: "per_unit" | "per_user_per_period" | "per_hour_bundle";
   pricing: { interval: string; price: number }[];
 }
 
@@ -110,16 +110,18 @@ function QuoteProductRow({
   line, quoteId, canRemove,
 }: { line: QuoteProductLine; quoteId: string; canRemove: boolean }) {
   const pt = line.product ? getProductType(line.product.type) : null;
-  const isSaaS = line.product?.pricingMode === "per_user_per_period";
-  const seats = line.seats ?? Number(line.quantity);
+  const mode = (line.product?.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period" | "per_hour_bundle";
+  const isSaaS = mode === "per_user_per_period";
+  const isBundle = mode === "per_hour_bundle";
+  const qty = line.seats ?? Number(line.quantity);
   const pricingInterval = (line.pricingInterval ?? "onetime") as BillingIntervalSlug;
   const billingInterval = (line.billingInterval ?? pricingInterval) as BillingIntervalSlug;
   const baseUnitPrice = Number(line.unitPrice);
 
   const total = lineTotal({
-    pricingMode: (line.product?.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period",
+    pricingMode: mode,
     unitPrice: baseUnitPrice,
-    seats,
+    seats: qty,
     pricingInterval,
     billingInterval,
   });
@@ -138,16 +140,18 @@ function QuoteProductRow({
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            {isSaaS
-              ? `${seats} pladser × ${formatCurrency(baseUnitPrice)} / ${priceLabel}`
-              : `${seats} × ${formatCurrency(baseUnitPrice)}`}
+            {isSaaS && `${qty} pladser × ${formatCurrency(baseUnitPrice)} / ${priceLabel}`}
+            {isBundle && `${qty} timer × ${formatCurrency(baseUnitPrice)}/time`}
+            {!isSaaS && !isBundle && `${qty} × ${formatCurrency(baseUnitPrice)}`}
             {Number(line.discountPct) > 0 && <span className="text-emerald-700 ml-2">−{Number(line.discountPct)}%</span>}
             {line.unitPriceOverride !== null && <span className="text-amber-700 ml-2">special-pris</span>}
           </p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-semibold tabular-nums">{formatCurrency(discounted)}</p>
-          <p className="text-[10px] text-muted-foreground">/ {billLabel}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {isBundle ? "klippekort" : `/ ${billLabel}`}
+          </p>
         </div>
         {canRemove && (
           <form action={removeQuoteProduct.bind(null, line.id, quoteId)}>
@@ -181,13 +185,20 @@ function AddQuoteProductForm({
 
   const product = useMemo(() => products.find((p) => p.id === productId), [productId, products]);
   const isSaaS = product?.pricingMode === "per_user_per_period";
+  const isBundle = product?.pricingMode === "per_hour_bundle";
 
   // Find listepris for valgt interval
   const listPrice = useMemo(() => {
     if (!product) return 0;
+    // Klippekort har typisk en pris pa "onetime"-intervallet (timepris)
+    if (isBundle) {
+      const onetime = product.pricing.find((p) => p.interval === "onetime");
+      if (onetime) return onetime.price;
+      return product.pricing[0]?.price ?? 0;
+    }
     const matched = product.pricing.find((p) => p.interval === pricingInterval) ?? product.pricing[0];
     return matched ? matched.price : 0;
-  }, [product, pricingInterval]);
+  }, [product, pricingInterval, isBundle]);
 
   const effectivePrice = override ? Number(override) : listPrice;
 
@@ -210,6 +221,11 @@ function AddQuoteProductForm({
       setPricingInterval("monthly");
       setBillingInterval("annual"); // typisk SaaS-default: pris pr. md, faktureret aarligt
       setSeats(5);
+    } else if (p?.pricingMode === "per_hour_bundle") {
+      // Klippekort: pris pr. time, "onetime" som interval, default 10 timer
+      setPricingInterval("onetime");
+      setBillingInterval("onetime");
+      setSeats(10);
     } else {
       const firstInterval = (p?.pricing[0]?.interval as BillingIntervalSlug) ?? "onetime";
       setPricingInterval(firstInterval);
@@ -249,7 +265,9 @@ function AddQuoteProductForm({
           >
             {products.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}{p.pricingMode === "per_user_per_period" && " (SaaS / pr. bruger)"}
+                {p.name}
+                {p.pricingMode === "per_user_per_period" && " (SaaS / pr. bruger)"}
+                {p.pricingMode === "per_hour_bundle" && " (Klippekort / pr. time)"}
               </option>
             ))}
           </select>
@@ -257,7 +275,11 @@ function AddQuoteProductForm({
 
         <div className="space-y-1">
           <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
-            <Users className="h-3 w-3" /> {isSaaS ? "Antal pladser" : "Antal stk"}
+            {isBundle
+              ? <><Clock className="h-3 w-3" /> Antal timer</>
+              : isSaaS
+                ? <><Users className="h-3 w-3" /> Antal pladser</>
+                : <><Users className="h-3 w-3" /> Antal stk</>}
           </label>
           <input
             type="number"
@@ -266,27 +288,48 @@ function AddQuoteProductForm({
             onChange={(e) => setSeats(Math.max(1, Number(e.target.value)))}
             className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
+          {isBundle && (
+            <p className="text-[10px] text-muted-foreground">
+              Definér timetallet — det er det klippekort kunden køber.
+            </p>
+          )}
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-foreground">
-            {isSaaS ? "Pris pr. periode" : "Pris-interval"}
-          </label>
-          <select
-            value={pricingInterval}
-            onChange={(e) => setPricingInterval(e.target.value as BillingIntervalSlug)}
-            className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            {BILLING_INTERVAL_LIST.filter((i) =>
-              isSaaS ? i.slug !== "onetime" : true
-            ).map((i) => (
-              <option key={i.slug} value={i.slug}>{i.label}</option>
-            ))}
-          </select>
-          <p className="text-[10px] text-muted-foreground">
-            Listepris: {formatCurrency(listPrice)} / {BILLING_INTERVALS[pricingInterval].shortLabel}
-          </p>
-        </div>
+        {!isBundle && (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              {isSaaS ? "Pris pr. periode" : "Pris-interval"}
+            </label>
+            <select
+              value={pricingInterval}
+              onChange={(e) => setPricingInterval(e.target.value as BillingIntervalSlug)}
+              className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {BILLING_INTERVAL_LIST.filter((i) =>
+                isSaaS ? i.slug !== "onetime" : true
+              ).map((i) => (
+                <option key={i.slug} value={i.slug}>{i.label}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-muted-foreground">
+              Listepris: {formatCurrency(listPrice)} / {BILLING_INTERVALS[pricingInterval].shortLabel}
+            </p>
+          </div>
+        )}
+
+        {isBundle && (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Scissors className="h-3 w-3" /> Listepris
+            </label>
+            <div className="w-full px-3 py-2 rounded-lg border border-input bg-secondary/30 text-sm">
+              {formatCurrency(listPrice)} <span className="text-muted-foreground">/ time</span>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Klippekort er engangskøb — total = timer × timepris.
+            </p>
+          </div>
+        )}
 
         {isSaaS && (
           <div className="space-y-1">
@@ -335,14 +378,16 @@ function AddQuoteProductForm({
       {/* Live total preview */}
       <div className="bg-card border border-border rounded-lg px-3 py-2.5 flex items-center justify-between">
         <div className="text-xs text-muted-foreground">
-          {isSaaS
-            ? `${seats} pladser × ${formatCurrency(effectivePrice)} / ${BILLING_INTERVALS[pricingInterval].shortLabel}`
-            : `${seats} × ${formatCurrency(effectivePrice)}`}
+          {isSaaS && `${seats} pladser × ${formatCurrency(effectivePrice)} / ${BILLING_INTERVALS[pricingInterval].shortLabel}`}
+          {isBundle && `${seats} timer × ${formatCurrency(effectivePrice)}/time`}
+          {!isSaaS && !isBundle && `${seats} × ${formatCurrency(effectivePrice)}`}
           {discount > 0 && <span className="text-emerald-700 ml-2">−{discount}%</span>}
         </div>
         <div className="text-right">
           <p className="text-sm font-bold tabular-nums">{formatCurrency(computedTotal)}</p>
-          <p className="text-[10px] text-muted-foreground">/ {BILLING_INTERVALS[billingInterval].shortLabel}</p>
+          <p className="text-[10px] text-muted-foreground">
+            {isBundle ? "klippekort" : `/ ${BILLING_INTERVALS[billingInterval].shortLabel}`}
+          </p>
         </div>
       </div>
 

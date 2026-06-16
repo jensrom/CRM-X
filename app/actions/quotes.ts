@@ -214,23 +214,37 @@ export async function addQuoteProduct(formData: FormData) {
   });
   if (!product) throw new Error("Produkt ikke fundet");
 
-  const isSaaS = product.pricingMode === "per_user_per_period";
+  const isSaaS   = product.pricingMode === "per_user_per_period";
+  const isBundle = product.pricingMode === "per_hour_bundle";
   const seats           = Number(formData.get("seats") ?? 1);
+  // For klippekort er pricingInterval altid "onetime" — det er ikke valgt af brugeren
   const pricingInterval = String(formData.get("pricingInterval") ?? (isSaaS ? "monthly" : "onetime"));
   const billingInterval = String(formData.get("billingInterval") ?? pricingInterval);
   const overrideRaw     = String(formData.get("unitPriceOverride") ?? "");
   const discountPct     = Number(formData.get("discountPct") ?? 0);
 
-  // Find listepris for valgt interval
-  const matched = product.pricing.find((p) => p.interval === pricingInterval) ?? product.pricing[0];
-  const listPrice = matched ? Number(matched.price) : 0;
+  // Find listepris
+  let listPrice = 0;
+  if (isBundle) {
+    // Klippekort: kig efter "onetime" først (typisk hvor timepris er gemt)
+    const matched = product.pricing.find((p) => p.interval === "onetime") ?? product.pricing[0];
+    listPrice = matched ? Number(matched.price) : 0;
+  } else {
+    const matched = product.pricing.find((p) => p.interval === pricingInterval) ?? product.pricing[0];
+    listPrice = matched ? Number(matched.price) : 0;
+  }
   const unitPriceOverride = overrideRaw ? Number(overrideRaw) : null;
   const effectiveUnitPrice = unitPriceOverride ?? listPrice;
 
-  // Beskrivelse: SaaS faar "Produkt — N pladser", ellers bare produktnavn
-  const description = isSaaS
-    ? `${product.name} — ${seats} ${seats === 1 ? "plads" : "pladser"}`
-    : product.name;
+  // Beskrivelse beriges med kontekst
+  let description: string;
+  if (isSaaS) {
+    description = `${product.name} — ${seats} ${seats === 1 ? "plads" : "pladser"}`;
+  } else if (isBundle) {
+    description = `${product.name} — ${seats} ${seats === 1 ? "time" : "timer"}`;
+  } else {
+    description = product.name;
+  }
 
   const lastSort = await db.quoteLine.findFirst({
     where: { quoteId },
@@ -340,6 +354,80 @@ export async function sendQuote(id: string) {
     data: { status: "sent", sentAt: new Date() },
   });
   revalidatePath(`/quotes/${id}`);
+}
+
+/**
+ * Sender selve tilbud-mailen — via brugerens mailbox eller system-mail.
+ * Markerer ogsaa quote.status="sent" hvis afsendelsen lykkes og status er "draft".
+ */
+export async function emailQuote(quoteId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.tenantId || !session.user.id) throw new Error("Ikke autoriseret");
+  const tenantId = session.user.tenantId;
+  const userId = session.user.id;
+
+  const { sendMail } = await import("@/lib/email");
+
+  const quote = await db.quote.findFirst({
+    where: { id: quoteId, tenantId },
+    include: {
+      company: { select: { name: true } },
+      tenant:  { select: { name: true, quotePrefix: true } },
+    },
+  });
+  if (!quote) throw new Error("Tilbud ikke fundet");
+
+  const via = (String(formData.get("via")) === "system" ? "system" : "user") as "system" | "user";
+  const to      = String(formData.get("to") ?? "");
+  const subject = String(formData.get("subject") ?? "");
+  const message = String(formData.get("message") ?? "");
+
+  if (!to || !subject) throw new Error("Modtager og emne paakraevet");
+
+  // Simpel HTML-body. En egentlig template-engine kommer i naeste fase.
+  const ref = `${quote.tenant.quotePrefix ?? "Q"}-${String(quote.number).padStart(4, "0")}`;
+  const html = `
+    <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 600px; color:#222;">
+      <p>${escapeHtml(message).replace(/\n/g, "<br/>")}</p>
+      <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
+      <p style="font-size:12px; color:#888;">
+        Tilbud ${ref} fra ${escapeHtml(quote.tenant.name)} til ${escapeHtml(quote.company.name)}
+      </p>
+    </div>
+  `;
+  const text = `${message}\n\n—\nTilbud ${ref} fra ${quote.tenant.name} til ${quote.company.name}`;
+
+  const result = await sendMail({
+    via, tenantId, userId,
+    to:      to.split(",").map((s) => s.trim()).filter(Boolean),
+    subject,
+    html, text,
+    resourceType: "quote",
+    resourceId:   quoteId,
+  });
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Kunne ikke sende mail");
+  }
+
+  // Marker tilbuddet som sendt hvis det stadig var en kladde
+  if (quote.status === "draft") {
+    await db.quote.update({
+      where: { id: quoteId },
+      data: { status: "sent", sentAt: new Date() },
+    });
+  }
+
+  revalidatePath(`/quotes/${quoteId}`);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 export async function acceptQuote(id: string) {

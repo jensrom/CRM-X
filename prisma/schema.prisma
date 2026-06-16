@@ -87,6 +87,18 @@ model Tenant {
   invoicePrefix String   @default("F")
   quotePrefix   String   @default("Q")
 
+  // --- System-email config ─────────────────────────────────────
+  // System-mails (invites, notifikationer, faktura-kvittering) afsendes via
+  // Resend fra et verificeret domaene. Personlige mails afsendes fra brugerens
+  // egen OAuth-koblede mailbox.
+  systemEmailDomain     String?   // fx "plesnertech.dk"
+  systemEmailFromName   String?   // fx "Plesner Tech CRM"
+  systemEmailFromAddress String?  // fx "noreply@plesnertech.dk"
+  systemEmailReplyTo    String?   // valgfri Reply-To
+  resendApiKey          String?   // krypteret (tenant-isoleret API-key hos Resend)
+  systemEmailVerified   Boolean   @default(false) // DKIM/SPF verifyed hos Resend
+  systemEmailVerifiedAt DateTime?
+
   // --- Faktura-konfiguration (afsenderinfo + skabelon-tekster) ---
   // Bruges af /settings/invoice-config og PDF-render. Alle valgfri — falder
   // tilbage til kunde-/tenant-stamdata hvis ikke sat.
@@ -122,6 +134,7 @@ model Tenant {
   quotes           Quote[]
   dealStageHistory DealStageHistory[]
   forecastSnapshots ForecastSnapshot[]
+  emailLogs        EmailLog[]
   userInvites      UserInvite[]
   bundlePricing    BundlePricingTier[]
   apiTokens        ApiToken[]
@@ -254,6 +267,19 @@ model User {
   passwordChangedAt DateTime?  // bruges til at tvinge re-login efter password reset
   failedLoginCount  Int      @default(0)
   lockedUntil       DateTime?
+
+  // --- Email-integration (tilkoblet personlig mailbox) ─────────
+  // Naar brugeren har koblet sin egen mail-konto (M365 eller Workspace) kan
+  // CRM-X sende mails *fra* deres mailbox via OAuth. Tokens lagres krypteret.
+  // Hvis emailProvider er null bruger systemet kun system-mail (Resend).
+  emailProvider           String?   // "microsoft" | "google" | null
+  emailAccessToken        String?   @db.Text  // krypteret
+  emailRefreshToken       String?   @db.Text  // krypteret
+  emailTokenExpiresAt     DateTime?
+  emailScope              String?   // OAuth-scopes der blev givet
+  connectedEmailAddress   String?   // mailen brugeren OAuth'ede med (kan adskille fra User.email)
+  emailConnectedAt        DateTime?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -267,6 +293,7 @@ model User {
   checkIns        ActiveCheckIn[]
   notifications   Notification[]
   ticketComments  TicketComment[]
+  emailLogs       EmailLog[]
 
   @@unique([tenantId, email])
   @@map("users")
@@ -1078,6 +1105,54 @@ model QuoteLine {
   product Product? @relation(fields: [productId], references: [id])
 
   @@map("quote_lines")
+}
+
+// ============================================================
+// EMAIL LOG — audit-spor over alle sendte mails
+// ────────────────────────────────────────────────────────────
+// Bruges til at vise i UI: "Tilbud Q-0042 sendt af Erik via Microsoft
+// 14:32 til kunde@firma.dk — leveret".
+//
+// Hver afsendelse logges UANSET provider — Resend, Microsoft Graph,
+// eller Gmail. Compliance: data-retention 12 mdr (GDPR Art. 5(1)(e)).
+// ============================================================
+
+model EmailLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  // userId = den der sendte mailen. Null hvis system-trigger (cron).
+  userId      String?
+  // provider: "resend" | "microsoft" | "google" | "mailto"
+  provider    String
+  // status: "queued" | "sent" | "delivered" | "bounced" | "failed"
+  status      String   @default("sent")
+  // Afsender + modtagere
+  fromAddress String
+  toAddresses String[] @default([])
+  ccAddresses String[] @default([])
+  bccAddresses String[] @default([])
+  subject     String
+  // Vi gemmer body for revisions-spor — kan vaere stort, derfor @db.Text
+  bodyHtml    String?  @db.Text
+  bodyText    String?  @db.Text
+  // Provider-specifikt id (Resend message-id, Graph-id, etc.) — bruges
+  // til at lookup'e leveringsstatus
+  providerMessageId String?
+  // Hvilken ressource er den knyttet til?
+  resourceType String?  // "quote" | "invoice" | "invite" | "notification" | ...
+  resourceId   String?
+  errorMessage String?  @db.Text
+  sentAt       DateTime @default(now())
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, sentAt])
+  @@index([resourceType, resourceId])
+  @@index([providerMessageId])
+  @@map("email_logs")
 }
 
 // ============================================================

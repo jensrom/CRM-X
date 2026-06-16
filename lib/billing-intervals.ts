@@ -79,25 +79,27 @@ export function periodMultiplier(
 /**
  * Beregn linje-total for et CustomerProduct.
  *
- *   per_unit:             total = pris × seats
+ *   per_unit:             total = pris × antal
  *   per_user_per_period:  total = pris × seats × periodMultiplier(price, billing)
+ *   per_hour_bundle:      total = pris × timer    (klippekort — engangskøb)
  */
 export function lineTotal(opts: {
-  pricingMode: "per_unit" | "per_user_per_period";
+  pricingMode: "per_unit" | "per_user_per_period" | "per_hour_bundle";
   unitPrice: number;
+  /** seats (SaaS) eller timer (klippekort) eller stk (per_unit) */
   seats: number;
   pricingInterval: BillingIntervalSlug;
   billingInterval: BillingIntervalSlug;
 }): number {
   const { pricingMode, unitPrice, seats, pricingInterval, billingInterval } = opts;
-  const safeSeats = Math.max(1, seats || 1);
+  const safeQty = Math.max(1, seats || 1);
 
-  if (pricingMode === "per_unit") {
-    return unitPrice * safeSeats;
+  if (pricingMode === "per_unit" || pricingMode === "per_hour_bundle") {
+    return unitPrice * safeQty;
   }
 
   const mult = periodMultiplier(pricingInterval, billingInterval);
-  return unitPrice * safeSeats * mult;
+  return unitPrice * safeQty * mult;
 }
 
 /**
@@ -105,7 +107,7 @@ export function lineTotal(opts: {
  *   "1.250 kr × 10 pladser × 12 mdr/år = 150.000 kr/år"
  */
 export function priceBreakdown(opts: {
-  pricingMode: "per_unit" | "per_user_per_period";
+  pricingMode: "per_unit" | "per_user_per_period" | "per_hour_bundle";
   unitPrice: number;
   seats: number;
   pricingInterval: BillingIntervalSlug;
@@ -114,6 +116,10 @@ export function priceBreakdown(opts: {
   const { pricingMode, unitPrice, seats, pricingInterval, billingInterval } = opts;
   const total = lineTotal(opts);
   const fmtKr = (n: number) => `${Math.round(n).toLocaleString("da-DK")} kr`;
+
+  if (pricingMode === "per_hour_bundle") {
+    return `${fmtKr(unitPrice)}/time × ${seats} timer = ${fmtKr(total)}`;
+  }
 
   if (pricingMode === "per_unit" || pricingInterval === "onetime") {
     if (seats === 1) return `${fmtKr(total)}`;

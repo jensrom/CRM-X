@@ -103,8 +103,10 @@ export async function getProductCategories() {
  *
  * Brugeren kan overskrive efterfølgende, men default skal "bare spille".
  */
-function defaultPricingModeForType(type: string): "per_unit" | "per_user_per_period" {
-  return type === "saas" || type === "subscription" ? "per_user_per_period" : "per_unit";
+function defaultPricingModeForType(type: string): "per_unit" | "per_user_per_period" | "per_hour_bundle" {
+  if (type === "saas" || type === "subscription") return "per_user_per_period";
+  if (type === "bundle") return "per_hour_bundle";
+  return "per_unit";
 }
 
 export async function createProduct(formData: FormData) {
@@ -113,7 +115,7 @@ export async function createProduct(formData: FormData) {
   const type = (formData.get("type") as string) || "other";
   // Hvis brugeren ikke eksplicit har valgt pricingMode, foelg type-defaulten
   const explicitMode = formData.get("pricingMode") as string;
-  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period")
+  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period" || explicitMode === "per_hour_bundle")
     ? explicitMode
     : defaultPricingModeForType(type);
 
@@ -143,7 +145,7 @@ export async function updateProduct(formData: FormData) {
   const type = (formData.get("type") as string) || "other";
   // Brugeren kan eksplicit vælge pricingMode i UI. Hvis ikke, foelg type-defaulten.
   const explicitMode = formData.get("pricingMode") as string;
-  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period")
+  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period" || explicitMode === "per_hour_bundle")
     ? explicitMode
     : defaultPricingModeForType(type);
 

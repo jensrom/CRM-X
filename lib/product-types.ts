@@ -15,6 +15,7 @@ export type ProductTypeSlug =
   | "subscription"
   | "onetime"
   | "consulting"
+  | "bundle"
   | "hardware"
   | "other"
   // Legacy-slugs bevaret for backward-compat
@@ -49,6 +50,11 @@ export const PRODUCT_TYPES: Record<ProductTypeSlug, ProductTypeDefinition> = {
     slug: "consulting",
     label: "Konsulentydelse",
     badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  },
+  bundle: {
+    slug: "bundle",
+    label: "Klippekort",
+    badgeClass: "bg-rose-50 text-rose-700 border-rose-200",
   },
   hardware: {
     slug: "hardware",

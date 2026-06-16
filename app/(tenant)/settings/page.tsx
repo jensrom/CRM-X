@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { updateMyProfile } from "@/app/actions/settings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings, Shield, Users, ChevronRight, ShieldCheck, ScrollText, KeyRound, Scissors, FileText, Code2 } from "lucide-react";
+import { Settings, Shield, Users, ChevronRight, ShieldCheck, ScrollText, KeyRound, Scissors, FileText, Code2, Mail } from "lucide-react";
 import Link from "next/link";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
 import { normalizeLocale } from "@/lib/i18n";
@@ -172,6 +172,20 @@ export default async function SettingsPage() {
               <div>
                 <p className="text-sm font-medium group-hover:text-primary transition-colors">Faktura konfiguration</p>
                 <p className="text-xs text-muted-foreground">Logo, CVR, EAN, afsenderinfo</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+
+          <Link href="/settings/email"
+            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium group-hover:text-primary transition-colors">Email</p>
+                <p className="text-xs text-muted-foreground">Kobl din mailbox + system-mail-konfiguration</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />

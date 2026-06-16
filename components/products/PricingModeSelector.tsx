@@ -10,24 +10,28 @@
  */
 
 import { useState, useEffect } from "react";
-import { Users, Package } from "lucide-react";
+import { Users, Package, Scissors } from "lucide-react";
+
+type Mode = "per_unit" | "per_user_per_period" | "per_hour_bundle";
 
 interface Props {
   defaultType: string;
-  defaultMode: "per_unit" | "per_user_per_period";
+  defaultMode: Mode;
 }
 
 export function PricingModeSelector({ defaultType, defaultMode }: Props) {
   const [type, setType] = useState(defaultType);
-  const [mode, setMode] = useState<"per_unit" | "per_user_per_period">(defaultMode);
+  const [mode, setMode] = useState<Mode>(defaultMode);
   // Husk om brugeren har valgt eksplicit — i sa fald override'r vi ikke fra type-aendring
   const [userTouched, setUserTouched] = useState(false);
 
-  // Auto-skift naar type aendres til SaaS/subscription
+  // Auto-skift naar type aendres
   useEffect(() => {
     if (userTouched) return;
     if (type === "saas" || type === "subscription") {
       setMode("per_user_per_period");
+    } else if (type === "bundle") {
+      setMode("per_hour_bundle");
     } else {
       setMode("per_unit");
     }
@@ -42,7 +46,7 @@ export function PricingModeSelector({ defaultType, defaultMode }: Props) {
     return () => typeSelect.removeEventListener("change", handler);
   }, []);
 
-  const setExplicit = (m: "per_unit" | "per_user_per_period") => {
+  const setExplicit = (m: Mode) => {
     setMode(m);
     setUserTouched(true);
   };
@@ -52,7 +56,7 @@ export function PricingModeSelector({ defaultType, defaultMode }: Props) {
       <label className="block text-sm font-medium text-foreground">Prismodel</label>
       <input type="hidden" name="pricingMode" value={mode} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <button
           type="button"
           onClick={() => setExplicit("per_unit")}
@@ -67,7 +71,7 @@ export function PricingModeSelector({ defaultType, defaultMode }: Props) {
             <p className="text-sm font-semibold">Pr. enhed</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Pris × antal stk. Klassisk salg af hardware, engangs-licenser, konsulenttimer.
+            Pris × antal stk. Hardware, éngangs-licenser, konsulenttimer.
           </p>
         </button>
 
@@ -82,10 +86,28 @@ export function PricingModeSelector({ defaultType, defaultMode }: Props) {
         >
           <div className="flex items-center gap-2 mb-1">
             <Users className={`h-4 w-4 ${mode === "per_user_per_period" ? "text-primary" : "text-muted-foreground"}`} />
-            <p className="text-sm font-semibold">Pr. bruger pr. periode (SaaS)</p>
+            <p className="text-sm font-semibold">Pr. bruger / periode</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            kr/bruger/md med flexibel faktureringsperiode. Typisk SaaS-model.
+            kr/bruger/md med fleksibel faktureringsperiode. SaaS-model.
+          </p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setExplicit("per_hour_bundle")}
+          className={`text-left p-3 rounded-lg border-2 transition-all ${
+            mode === "per_hour_bundle"
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/30 bg-card"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-1">
+            <Scissors className={`h-4 w-4 ${mode === "per_hour_bundle" ? "text-primary" : "text-muted-foreground"}`} />
+            <p className="text-sm font-semibold">Pr. time-pakke</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            kr/time × antal timer. Klippekort & pre-paid services.
           </p>
         </button>
       </div>
@@ -93,6 +115,11 @@ export function PricingModeSelector({ defaultType, defaultMode }: Props) {
       {(type === "saas" || type === "subscription") && mode !== "per_user_per_period" && (
         <p className="text-xs text-amber-700 pl-0.5 mt-1.5">
           Bemærk: {type === "saas" ? "SaaS" : "Abonnement"}-produkter bruger typisk pr. bruger-prisning.
+        </p>
+      )}
+      {type === "bundle" && mode !== "per_hour_bundle" && (
+        <p className="text-xs text-amber-700 pl-0.5 mt-1.5">
+          Bemærk: Klippekort bruger typisk pr. time-prisning.
         </p>
       )}
     </div>
