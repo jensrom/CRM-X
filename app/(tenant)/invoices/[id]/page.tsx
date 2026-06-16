@@ -10,10 +10,9 @@ import {
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
-import { SendMailDialog } from "@/components/shared/SendMailDialog";
+import { MailtoSendButton } from "@/components/shared/MailtoSendButton";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getEffectiveSystemMail } from "@/lib/email/effective-config";
 
 const STATUS_OPTS = [
   { value: "draft",     label: "Kladde" },
@@ -41,18 +40,7 @@ export default async function InvoiceDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const session = await auth();
-  const [invoice, mailMe, effectiveSystem] = await Promise.all([
-    getInvoice(id),
-    session?.user?.id
-      ? db.user.findFirst({
-          where: { id: session.user.id },
-          select: { emailProvider: true, connectedEmailAddress: true },
-        })
-      : Promise.resolve(null),
-    session?.user?.tenantId
-      ? getEffectiveSystemMail(session.user.tenantId)
-      : Promise.resolve(null),
-  ]);
+  const invoice = await getInvoice(id);
   if (!invoice) notFound();
 
   // Find foerste kontakt-mail paa kunden til pre-udfyld
@@ -64,17 +52,6 @@ export default async function InvoiceDetailPage({
       }).catch(() => null)
     : null;
 
-  const userMailbox = mailMe?.emailProvider && mailMe.connectedEmailAddress
-    ? { provider: mailMe.emailProvider as "microsoft" | "google", address: mailMe.connectedEmailAddress }
-    : null;
-  const systemMailbox = effectiveSystem
-    ? { address: effectiveSystem.fromAddress }
-    : null;
-
-  async function handleEmailSubmit(formData: FormData) {
-    "use server";
-    await emailInvoice(id, formData);
-  }
 
   // Server-side "tilbage"-mål. Hvis brugeren kom fra en kunde-side
   // (eller hvor som helst med ?from=), respektér det. Ellers default til faktura-listen.
@@ -117,7 +94,7 @@ export default async function InvoiceDetailPage({
           <span className="text-foreground font-medium truncate">{invoice.company.name}</span>
         </div>
         <div className="w-auto">
-          <SendMailDialog
+          <MailtoSendButton
             triggerLabel="Send faktura via mail"
             defaultTo={primaryContact?.email ?? (invoice as any).company?.invoiceEmail ?? ""}
             defaultSubject={`Faktura ${invoiceRef} fra ${(invoice as any).tenant?.name ?? "Plesner Tech"}`}
@@ -127,9 +104,8 @@ export default async function InvoiceDetailPage({
               `Betalingsfrist fremgår af fakturaen. Sig endelig til hvis der er spørgsmål.\n\n` +
               `Mvh\n${(session?.user as any)?.name ?? "Plesner Tech"}`
             }
-            userMailbox={userMailbox}
-            systemMailbox={systemMailbox}
-            onSubmit={handleEmailSubmit}
+            resourceType="invoice"
+            resourceId={id}
           />
         </div>
       </div>

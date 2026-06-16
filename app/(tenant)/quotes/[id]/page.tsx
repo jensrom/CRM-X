@@ -15,11 +15,10 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { QuoteProductsPanel } from "@/components/quotes/QuoteProductsPanel";
-import { SendQuoteMailDialog } from "@/components/quotes/SendQuoteMailDialog";
+import { MailtoSendButton } from "@/components/shared/MailtoSendButton";
 import { lineTotal, type BillingIntervalSlug } from "@/lib/billing-intervals";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getEffectiveSystemMail } from "@/lib/email/effective-config";
 
 const STATUS_OPTS: Record<string, { label: string; bg: string }> = {
   draft:    { label: "Kladde",     bg: "bg-slate-100 text-slate-700" },
@@ -47,18 +46,9 @@ export default async function QuoteDetailPage({
   const { id } = await params;
   const { from } = await searchParams;
   const session = await auth();
-  const [quote, allProducts, mailMe, effectiveSystem, primaryContact] = await Promise.all([
+  const [quote, allProducts, primaryContact] = await Promise.all([
     getQuote(id),
     getProducts({ isActive: true }),
-    session?.user?.id
-      ? db.user.findFirst({
-          where: { id: session.user.id },
-          select: { emailProvider: true, connectedEmailAddress: true },
-        })
-      : Promise.resolve(null),
-    session?.user?.tenantId
-      ? getEffectiveSystemMail(session.user.tenantId)
-      : Promise.resolve(null),
     // Find første aktive kontakt på kunden for default-mail-modtager
     db.contact.findFirst({
       where: { companyId: (await getQuote(id))?.companyId ?? "" },
@@ -68,12 +58,6 @@ export default async function QuoteDetailPage({
   ]);
   if (!quote) notFound();
 
-  const userMailbox = mailMe?.emailProvider && mailMe.connectedEmailAddress
-    ? { provider: mailMe.emailProvider as "microsoft" | "google", address: mailMe.connectedEmailAddress }
-    : null;
-  const systemMailbox = effectiveSystem
-    ? { address: effectiveSystem.fromAddress }
-    : null;
 
   // Serialiser produkter til client-komponenten
   const availableProducts = (allProducts as any[]).map((p) => ({
@@ -235,9 +219,9 @@ export default async function QuoteDetailPage({
             {/* Status-handlinger */}
             {editable && !quote.convertedToInvoiceId && (
               <div className="space-y-2 pt-3 border-t border-border">
-                {/* Send rigtig mail (fra brugerens mailbox eller system) */}
-                <SendQuoteMailDialog
-                  quoteId={id}
+                {/* Aabn mail-klient med pre-fyldt indhold */}
+                <MailtoSendButton
+                  triggerLabel="Send tilbud via mail"
                   defaultTo={primaryContact?.email ?? ""}
                   defaultSubject={`Tilbud ${quoteRef} fra ${quote.tenant.name}`}
                   defaultMessage={
@@ -247,9 +231,8 @@ export default async function QuoteDetailPage({
                     `Lad mig vide hvis du har spørgsmål.\n\n` +
                     `Mvh\n${(session?.user as any)?.name ?? "Plesner Tech"}`
                   }
-                  userMailbox={userMailbox}
-                  systemMailbox={systemMailbox}
-                  triggerLabel="Send tilbud via mail"
+                  resourceType="quote"
+                  resourceId={id}
                 />
                 {quote.status === "draft" && (
                   <form action={handleSend}>
