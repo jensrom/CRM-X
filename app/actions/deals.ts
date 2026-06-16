@@ -102,6 +102,8 @@ export async function createDeal(formData: FormData) {
 
   const _creator = await getCreatorContext();
 
+  const initialStage = (formData.get("stage") as string) || "new";
+
   const deal = await db.deal.create({
     data: {
       createdById: _creator.createdById,
@@ -113,10 +115,19 @@ export async function createDeal(formData: FormData) {
       assignedToId: assignedToId || null,
       value: valueStr ? parseFloat(valueStr) : null,
       currency: "DKK",
-      stage: (formData.get("stage") as string) || "new",
+      stage: initialStage,
       probability: probStr ? parseInt(probStr) : 0,
       expectedCloseDate: closeDateStr ? new Date(closeDateStr) : null,
       notes: (formData.get("notes") as string) || null,
+      // Initial stage-history entry — afgoerende for velocity-analyse
+      stageHistory: {
+        create: {
+          tenantId,
+          stage: initialStage,
+          enteredAt: new Date(),
+          changedById: _creator.createdById,
+        },
+      },
     },
   });
 
@@ -128,10 +139,40 @@ export async function updateDealStage(dealId: string, stage: string) {
   const session = await auth();
   if (!session?.user?.tenantId) throw new Error("Ikke autoriseret");
   const tenantId = session.user.tenantId;
+  const userId = session.user.id ?? null;
 
-  await db.deal.update({
-    where: { id: dealId, tenantId },
-    data: { stage },
+  // Atomisk: luk forrige stage-history-row + opret ny + opdater deal
+  const now = new Date();
+  await db.$transaction(async (tx) => {
+    const current = await tx.deal.findFirst({
+      where: { id: dealId, tenantId },
+      select: { stage: true },
+    });
+    if (!current) throw new Error("Deal ikke fundet");
+    // Hvis stadiet faktisk ikke ændrer sig, gør intet (idempotens)
+    if (current.stage === stage) return;
+
+    // Luk aabne historik-rows (typisk én)
+    await tx.dealStageHistory.updateMany({
+      where: { dealId, exitedAt: null },
+      data:  { exitedAt: now },
+    });
+    // Aabn ny
+    await tx.dealStageHistory.create({
+      data: {
+        tenantId, dealId, stage,
+        enteredAt: now,
+        changedById: userId,
+      },
+    });
+    // Opdatér selve dealet — sæt closedAt hvis won/lost
+    await tx.deal.update({
+      where: { id: dealId },
+      data: {
+        stage,
+        closedAt: (stage === "won" || stage === "lost") ? now : null,
+      },
+    });
   });
 
   // Notifikation ved won

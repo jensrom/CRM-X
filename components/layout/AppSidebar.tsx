@@ -20,6 +20,7 @@ import {
   Tag,
   Key,
   BarChart3,
+  Sparkles,
   Settings,
   LogOut,
   ChevronDown,
@@ -117,6 +118,10 @@ const NAV_SECTIONS: {
     section: "Analyse",          sectionKey: "nav.section.analytics",
     items: [
       { i18nKey: "nav.reports", label: "Rapporter", href: "/reports", icon: BarChart3 },
+      {
+        i18nKey: "nav.forecast", label: "Forecast", href: "/forecast",
+        icon: Sparkles, module: "forecast", betaBadge: true,
+      },
     ],
   },
 ];
@@ -223,6 +228,11 @@ export function AppSidebar({
                     )}
                   />
                   <span className="truncate">{item.i18nKey ? t(item.i18nKey, loc) : item.label}</span>
+                  {(item as any).betaBadge && (
+                    <span className="ml-auto text-[9px] uppercase font-semibold tracking-wide px-1.5 py-0.5 rounded-full bg-violet-500/20 text-violet-200 border border-violet-400/30">
+                      Beta
+                    </span>
+                  )}
                 </Link>
               ))}
             </div>

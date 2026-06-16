@@ -120,6 +120,8 @@ model Tenant {
   notifications    Notification[]
   invoices         Invoice[]
   quotes           Quote[]
+  dealStageHistory DealStageHistory[]
+  forecastSnapshots ForecastSnapshot[]
   userInvites      UserInvite[]
   bundlePricing    BundlePricingTier[]
   apiTokens        ApiToken[]
@@ -752,8 +754,74 @@ model Deal {
   products   DealProduct[] // Tilbudte produkter på dette deal
   invoices   Invoice[]     // Fakturaer genereret fra dette deal
   quotes     Quote[]       // Tilbud genereret fra dette deal
+  stageHistory DealStageHistory[] // Append-only log af stage-transitions
 
+  @@index([tenantId, stage])
+  @@index([tenantId, expectedCloseDate])
   @@map("deals")
+}
+
+// ============================================================
+// DEAL STAGE HISTORY — append-only log
+// ────────────────────────────────────────────────────────────
+// Hver gang et deal skifter stage skrives en ny raekke.
+// Bruges af Forecast-modulet til velocity-analyse:
+//   - Hvor lang tid bruger deals i hvert stadie?
+//   - Hvor er flaskehalsene?
+//   - Hvor stor er drop-off mellem stadier?
+//
+// exitedAt = null betyder "dealet er stadig i dette stadie".
+// Naar dealet skifter til naeste stadie sættes exitedAt paa
+// den forrige raekke og en ny raekke oprettes.
+// ============================================================
+
+model DealStageHistory {
+  id          String   @id @default(cuid())
+  tenantId    String
+  dealId      String
+  stage       String   // new | qualified | proposal | negotiation | won | lost
+  enteredAt   DateTime @default(now())
+  exitedAt    DateTime?
+  // Hvem foretog skiftet (kan vaere null for backfill / system)
+  changedById String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, stage])
+  @@index([dealId, enteredAt])
+  @@map("deal_stage_history")
+}
+
+// ============================================================
+// FORECAST SNAPSHOT — historik af beregnede forecasts
+// ────────────────────────────────────────────────────────────
+// Gemmer en forecast saa vi senere kan sammenligne med faktisk
+// resultat. Eksempel: "I januar forudsagde vi 2.5M omsaetning
+// i Q1 — vi endte paa 2.3M, fejl 8%."
+// Data lagres som Json for fleksibilitet.
+// ============================================================
+
+model ForecastSnapshot {
+  id          String   @id @default(cuid())
+  tenantId    String
+  // pipeline | revenue | funnel | mrr
+  type        String
+  periodStart DateTime
+  periodEnd   DateTime
+  // Datapunkter, KPI'er og confidence intervals — schema afhænger af type
+  data        Json
+  // Hvilke antagelser blev brugt (what-if-parametre, scenario)
+  assumptions Json?
+  // Hvem genererede snapshot — for traceback
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type, createdAt])
+  @@index([tenantId, periodStart])
+  @@map("forecast_snapshots")
 }
 
 /**

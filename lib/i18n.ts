@@ -56,6 +56,7 @@ export const TRANSLATIONS: TranslationDict = {
   "nav.products":          { da: "Produkter", en: "Products", sv: "Produkter", no: "Produkter", de: "Produkte" },
   "nav.licenses":          { da: "Licenser", en: "Licenses", sv: "Licenser", no: "Lisenser", de: "Lizenzen" },
   "nav.reports":           { da: "Rapporter", en: "Reports", sv: "Rapporter", no: "Rapporter", de: "Berichte" },
+  "nav.forecast":          { da: "Forecast", en: "Forecast", sv: "Prognos", no: "Prognose", de: "Prognose" },
   "nav.settings":          { da: "Indstillinger", en: "Settings", sv: "Inställningar", no: "Innstillinger", de: "Einstellungen" },
   "nav.logout":            { da: "Log ud", en: "Log out", sv: "Logga ut", no: "Logg ut", de: "Abmelden" },
 
