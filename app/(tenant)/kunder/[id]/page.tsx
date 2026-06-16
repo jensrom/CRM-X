@@ -17,6 +17,11 @@ import { DeleteCompanyDialog } from "@/components/companies/DeleteCompanyDialog"
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { getProductType } from "@/lib/product-types";
 import { BILLING_INTERVALS, lineTotal } from "@/lib/billing-intervals";
+import { PreviewDialog } from "@/components/shared/PreviewDialog";
+import {
+  InvoicePreviewBody, ProjectPreviewBody, TicketPreviewBody,
+  BundlePreviewBody, QuotePreviewBody,
+} from "@/components/companies/TabPreviews";
 
 export default async function CompanyDetailPage({
   params, searchParams,
@@ -321,25 +326,33 @@ function ProjekterTab({ company }: { company: any }) {
   );
 }
 
-function ProjectRow({ p, closed, from }: { p: any; closed?: boolean; from?: string }) {
+function ProjectRow({ p, closed }: { p: any; closed?: boolean; from?: string }) {
   const ref = p.tenant?.projectPrefix ? formatRef(p.tenant.projectPrefix, p.number) : `#${p.number}`;
-  const href = from ? `/projects/${p.id}?from=${encodeURIComponent(from)}` : `/projects/${p.id}`;
   return (
-    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
-      <FolderKanban className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{p.title}</p>
-        <p className="text-xs text-muted-foreground">
-          <span className="font-mono">{ref}</span>
-          {p.assignedTo && <> &middot; {p.assignedTo.name}</>}
-          {p._count?.timeLogs > 0 && <> &middot; {p._count.timeLogs} tidslogs</>}
-        </p>
-      </div>
-      <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((PROJECT_STATUS as any)[p.status]?.color) ?? "muted"]}`}>
-        {(PROJECT_STATUS as any)[p.status]?.label ?? p.status}
-      </span>
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </Link>
+    <PreviewDialog
+      trigger={
+        <div className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+          <FolderKanban className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{p.title}</p>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-mono">{ref}</span>
+              {p.assignedTo && <> &middot; {p.assignedTo.name}</>}
+              {p._count?.timeLogs > 0 && <> &middot; {p._count.timeLogs} tidslogs</>}
+            </p>
+          </div>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((PROJECT_STATUS as any)[p.status]?.color) ?? "muted"]}`}>
+            {(PROJECT_STATUS as any)[p.status]?.label ?? p.status}
+          </span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      }
+      title={`${ref} · ${p.title}`}
+      subtitle="Projekt-overblik"
+      openFullHref={`/projects/${p.id}`}
+    >
+      <ProjectPreviewBody project={p} />
+    </PreviewDialog>
   );
 }
 
@@ -371,25 +384,34 @@ const TONE_BADGE: Record<string, string> = {
   muted:   "bg-secondary text-muted-foreground border-border",
 };
 
-function TicketRow({ t, closed, from }: { t: any; closed?: boolean; from?: string }) {
+function TicketRow({ t, closed }: { t: any; closed?: boolean; from?: string }) {
   const stMeta = (TICKET_STATUS as any)[t.status];
   const prMeta = (TICKET_PRIORITY as any)[t.priority];
-  const href = from ? `/support/tickets/${t.id}?from=${encodeURIComponent(from)}` : `/support/tickets/${t.id}`;
+  const ref = `T-${String(t.number).padStart(4, "0")}`;
   return (
-    <Link href={href} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
-      <TicketIcon className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{t.subject ?? t.title ?? "Ticket"}</p>
-        <p className="text-xs text-muted-foreground">
-          T-{String(t.number).padStart(4, "0")}
-          {t.product && <> &middot; {t.product.name}</>}
-          {t.assignedTo && <> &middot; {t.assignedTo.name}</>}
-        </p>
-      </div>
-      {prMeta?.label && <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[prMeta.color] ?? TONE_BADGE.muted}`}>{prMeta.label}</span>}
-      {stMeta?.label && <span className="text-xs text-muted-foreground">{stMeta.label}</span>}
-      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-    </Link>
+    <PreviewDialog
+      trigger={
+        <div className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+          <TicketIcon className={`h-4 w-4 shrink-0 ${closed ? "text-muted-foreground" : "text-primary"}`} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{t.subject ?? t.title ?? "Ticket"}</p>
+            <p className="text-xs text-muted-foreground">
+              {ref}
+              {t.product && <> &middot; {t.product.name}</>}
+              {t.assignedTo && <> &middot; {t.assignedTo.name}</>}
+            </p>
+          </div>
+          {prMeta?.label && <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[prMeta.color] ?? TONE_BADGE.muted}`}>{prMeta.label}</span>}
+          {stMeta?.label && <span className="text-xs text-muted-foreground">{stMeta.label}</span>}
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      }
+      title={`${ref} · ${t.subject ?? t.title ?? "Ticket"}`}
+      subtitle="Ticket-overblik"
+      openFullHref={`/support/tickets/${t.id}`}
+    >
+      <TicketPreviewBody ticket={t} />
+    </PreviewDialog>
   );
 }
 
@@ -413,30 +435,38 @@ function KlippekortTab({ company }: { company: any }) {
   );
 }
 
-function BundleCard({ b, from }: { b: any; from?: string }) {
+function BundleCard({ b }: { b: any; from?: string }) {
   const ref = b.tenant?.bundlePrefix ? formatRef(b.tenant.bundlePrefix, b.number) : `KB-${b.number}`;
-  const href = from ? `/klippekort/${b.id}?from=${encodeURIComponent(from)}` : `/klippekort/${b.id}`;
   const usedH = Math.round(b.usedMinutes / 60 * 10) / 10;
   const totalH = b.totalHours;
   const remH = Math.max(0, totalH - usedH);
   const pct = Math.min(100, (b.usedMinutes / (totalH * 60)) * 100);
   return (
-    <Link href={href} className="block group">
-      <div className="p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-secondary/30 transition-colors">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-sm font-medium group-hover:text-primary transition-colors">{b.name ?? `${totalH} timers klippekort`}</p>
-          <span className="font-mono text-xs text-muted-foreground">{ref}</span>
+    <PreviewDialog
+      trigger={
+        <div className="group">
+          <div className="p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-secondary/30 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm font-medium group-hover:text-primary transition-colors">{b.name ?? `${totalH} timers klippekort`}</p>
+              <span className="font-mono text-xs text-muted-foreground">{ref}</span>
+            </div>
+            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+              <span>{usedH}t brugt</span>
+              <span>{remH}t tilbage / {totalH}t</span>
+            </div>
+            <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className={`h-full rounded-full ${pct >= 100 ? "bg-amber-500" : pct > 80 ? "bg-amber-400" : "bg-primary"}`} style={{ width: `${pct}%` }} />
+            </div>
+            {b.expiresAt && <p className="text-[11px] text-muted-foreground mt-1.5">Udløber {formatDate(b.expiresAt)}</p>}
+          </div>
         </div>
-        <div className="flex justify-between text-xs text-muted-foreground mb-1">
-          <span>{usedH}t brugt</span>
-          <span>{remH}t tilbage / {totalH}t</span>
-        </div>
-        <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div className={`h-full rounded-full ${pct >= 100 ? "bg-amber-500" : pct > 80 ? "bg-amber-400" : "bg-primary"}`} style={{ width: `${pct}%` }} />
-        </div>
-        {b.expiresAt && <p className="text-[11px] text-muted-foreground mt-1.5">Udløber {formatDate(b.expiresAt)}</p>}
-      </div>
-    </Link>
+      }
+      title={`${ref} · ${b.name ?? `${totalH}t klippekort`}`}
+      subtitle="Klippekort-overblik"
+      openFullHref={`/klippekort/${b.id}`}
+    >
+      <BundlePreviewBody bundle={b} />
+    </PreviewDialog>
   );
 }
 
@@ -469,8 +499,6 @@ function TilbudTab({ company }: { company: any }) {
     expired:  { label: "Udløbet",   bg: "bg-amber-100 text-amber-700" },
   };
 
-  const fromParam = `from=${encodeURIComponent(`/kunder/${company.id}?tab=tilbud`)}`;
-
   return (
     <div className="space-y-6">
       <Section
@@ -480,11 +508,11 @@ function TilbudTab({ company }: { company: any }) {
       >
         {open.length === 0
           ? <EmptyState icon={FileSignature} title="Ingen åbne tilbud" description="Generér et tilbud — eller genbrug et fra pipelinen." />
-          : <QuoteList items={open} qstatus={QSTATUS} fromParam={fromParam} />}
+          : <QuoteList items={open} qstatus={QSTATUS} />}
       </Section>
       {closed.length > 0 && (
         <Section title={`Lukkede (${closed.length})`} icon={CheckCircle2} muted>
-          <QuoteList items={closed} qstatus={QSTATUS} fromParam={fromParam} />
+          <QuoteList items={closed} qstatus={QSTATUS} />
         </Section>
       )}
     </div>
@@ -492,11 +520,11 @@ function TilbudTab({ company }: { company: any }) {
 }
 
 function QuoteList({
-  items, qstatus, fromParam,
+  items, qstatus,
 }: {
   items: any[];
   qstatus: Record<string, { label: string; bg: string }>;
-  fromParam: string;
+  fromParam?: string;
 }) {
   return (
     <div className="divide-y divide-border bg-card rounded-xl border border-border">
@@ -508,24 +536,35 @@ function QuoteList({
         }, 0);
         const total = q.vatEnabled ? subtotal * (1 + Number(q.vatPct) / 100) : subtotal;
         const sm = qstatus[q._displayStatus] ?? qstatus.draft;
+        const ref = `Q-${String(q.number).padStart(4, "0")}`;
         return (
-          <Link key={q.id} href={`/quotes/${q.id}?${fromParam}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
-            <FileSignature className="h-4 w-4 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-medium font-mono">Q-{String(q.number).padStart(4, "0")}</p>
-                {q.title && <span className="text-sm text-muted-foreground truncate">· {q.title}</span>}
+          <PreviewDialog
+            key={q.id}
+            trigger={
+              <div className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+                <FileSignature className="h-4 w-4 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium font-mono">{ref}</p>
+                    {q.title && <span className="text-sm text-muted-foreground truncate">· {q.title}</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {q.validUntil ? `Gyldig til ${formatDate(q.validUntil)}` : `Oprettet ${formatDate(q.createdAt)}`}
+                    {q.deal && <> · fra deal: {q.deal.title}</>}
+                    {q.convertedToInvoiceId && <> · konverteret <ArrowRight className="inline h-3 w-3" /> faktura</>}
+                  </p>
+                </div>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${sm.bg}`}>{sm.label}</span>
+                <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                {q.validUntil ? `Gyldig til ${formatDate(q.validUntil)}` : `Oprettet ${formatDate(q.createdAt)}`}
-                {q.deal && <> · fra deal: {q.deal.title}</>}
-                {q.convertedToInvoiceId && <> · konverteret <ArrowRight className="inline h-3 w-3" /> faktura</>}
-              </p>
-            </div>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${sm.bg}`}>{sm.label}</span>
-            <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
+            }
+            title={`Tilbud ${ref}`}
+            subtitle={q.title ?? "Tilbuds-overblik"}
+            openFullHref={`/quotes/${q.id}`}
+          >
+            <QuotePreviewBody quote={q} />
+          </PreviewDialog>
         );
       })}
     </div>
@@ -540,19 +579,30 @@ function FakturaerTab({ company }: { company: any }) {
         {company.invoices.map((inv: any) => {
           const subtotal = inv.lines.reduce((s: number, l: any) => s + Number(l.quantity) * Number(l.unitPrice) * (1 - Number(l.discountPct ?? 0) / 100), 0);
           const total = inv.vatEnabled ? subtotal * (1 + Number(inv.vatPct) / 100) : subtotal;
+          const ref = `F-${String(inv.number).padStart(4, "0")}`;
           return (
-            <Link key={inv.id} href={`/invoices/${inv.id}?from=${encodeURIComponent(`/kunder/${company.id}?tab=fakturaer`)}`} className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
-              <Receipt className="h-4 w-4 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">F-{String(inv.number).padStart(4, "0")}</p>
-                <p className="text-xs text-muted-foreground">{formatDate(inv.issueDate)}</p>
-              </div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((INVOICE_STATUS as any)[inv.status]?.color) ?? "muted"]}`}>
-                {(INVOICE_STATUS as any)[inv.status]?.label ?? inv.status}
-              </span>
-              <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
+            <PreviewDialog
+              key={inv.id}
+              trigger={
+                <div className="flex items-center gap-3 px-4 py-3 hover:bg-secondary/30 transition-colors">
+                  <Receipt className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{ref}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(inv.issueDate)}</p>
+                  </div>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${TONE_BADGE[((INVOICE_STATUS as any)[inv.status]?.color) ?? "muted"]}`}>
+                    {(INVOICE_STATUS as any)[inv.status]?.label ?? inv.status}
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums">{formatCurrency(total)}</span>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </div>
+              }
+              title={`Faktura ${ref}`}
+              subtitle={company.name}
+              openFullHref={`/invoices/${inv.id}`}
+            >
+              <InvoicePreviewBody invoice={inv} />
+            </PreviewDialog>
           );
         })}
       </div>
