@@ -13,6 +13,7 @@ import {
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { PRODUCT_TYPE_LIST, getProductType, normalizeProductType } from "@/lib/product-types";
+import { PricingModeSelector } from "@/components/products/PricingModeSelector";
 
 const INTERVAL_LABELS: Record<string, { label: string; short: string }> = {
   monthly:   { label: "Månedlig",    short: "md." },
@@ -206,7 +207,14 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                     <option key={t.slug} value={t.slug}>{t.label}</option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground pl-0.5">SaaS/Abonnement aktiverer pr.-bruger-pr.-periode-prisning automatisk.</p>
               </div>
+
+              {/* Prismodel — synker til type-vaelger ovenfor */}
+              <PricingModeSelector
+                defaultType={normalizeProductType((product as any).type)}
+                defaultMode={((product as any).pricingMode === "per_user_per_period" ? "per_user_per_period" : "per_unit")}
+              />
 
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-foreground">Beskrivelse</label>

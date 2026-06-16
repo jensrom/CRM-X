@@ -406,6 +406,7 @@ model Product {
   licenses         License[]
   timeLogs         TimeLog[]
   dealProducts     DealProduct[]
+  quoteLines       QuoteLine[]
 
   @@map("products")
 }
@@ -994,6 +995,13 @@ model InvoiceLine {
   sortOrder   Int     @default(0)
   timeLogId   String?
   productId   String?
+  // ─── SaaS-felter (parallel til QuoteLine + DealProduct) ───
+  // Naar produktet er SaaS (per_user_per_period), bevarer vi pladser + intervaller
+  // saa fakturaen kan vise korrekt "X pladser × pris pr. md, faktureret aarligt".
+  seats              Int?
+  pricingInterval    String?
+  billingInterval    String?
+  unitPriceOverride  Decimal? @db.Decimal(10, 2)
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
@@ -1058,8 +1066,16 @@ model QuoteLine {
   type        String  @default("manual")
   sortOrder   Int     @default(0)
   productId   String?
+  // ─── SaaS-felter ──────────────────────────────────────────
+  // Naar produktet er SaaS (per_user_per_period), bruges seats + intervaller
+  // til at beregne total. For ikke-SaaS er disse null.
+  seats              Int?
+  pricingInterval    String?  // monthly | quarterly | biannual | annual | onetime
+  billingInterval    String?  // same — hvor ofte kunden faktureres
+  unitPriceOverride  Decimal? @db.Decimal(10, 2) // Special-pris hvis forhandlet
 
-  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
 
   @@map("quote_lines")
 }

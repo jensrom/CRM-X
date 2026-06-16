@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createProduct } from "@/app/actions/products";
 import { PRODUCT_TYPE_LIST } from "@/lib/product-types";
+import { PricingModeSelector } from "@/components/products/PricingModeSelector";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
@@ -62,8 +63,11 @@ export default function NewProductPage() {
                   <option key={t.slug} value={t.slug}>{t.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-muted-foreground pl-0.5">Bruges som tag og filter i kataloget.</p>
+              <p className="text-xs text-muted-foreground pl-0.5">Vælger du SaaS eller Abonnement, skifter prismodellen automatisk til pr.-bruger-pr.-periode.</p>
             </div>
+
+            {/* Prismodel — auto-synker til type, men kan overskrives */}
+            <PricingModeSelector defaultType="other" defaultMode="per_unit" />
 
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-foreground">Beskrivelse</label>

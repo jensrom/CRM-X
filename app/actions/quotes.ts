@@ -67,7 +67,12 @@ export async function getQuote(id: string) {
     include: {
       company: { select: { id: true, name: true, address: true, city: true, zipCode: true, orgNumber: true } },
       deal:    { select: { id: true, title: true } },
-      lines:   { orderBy: { sortOrder: "asc" } },
+      lines: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          product: { include: { pricing: true } },
+        },
+      },
       tenant:  { select: { name: true, quotePrefix: true, invoicePrefix: true } },
     },
   });
@@ -175,7 +180,101 @@ export async function updateQuote(id: string, formData: FormData) {
   revalidatePath(`/quotes/${id}`);
 }
 
-// ─── Linjer ─────────────────────────────────────────────────────────────
+// ─── Produkt-linjer (SaaS-aware) ────────────────────────────────────────
+
+/**
+ * Tilfoej et produkt til et tilbud. Forstaar SaaS-prisning:
+ *   • Hvis produktet er per_user_per_period: bruger seats × pris × periode
+ *   • Hvis ikke: traditionel pris × antal
+ *
+ * Linje-beskrivelse genereres automatisk fra produkt-navn + pladser.
+ * Prissen fra ProductPricing tabellen bruges som default; brugeren kan overskrive.
+ */
+export async function addQuoteProduct(formData: FormData) {
+  const tenantId = await requireTenant();
+  const quoteId = String(formData.get("quoteId") ?? "");
+  const productId = String(formData.get("productId") ?? "");
+
+  if (!quoteId || !productId) throw new Error("Mangler tilbud eller produkt");
+
+  // Sikkerhed: tilbuddet er paa denne tenant og redigerbart
+  const quote = await db.quote.findFirst({
+    where: { id: quoteId, tenantId },
+    select: { status: true },
+  });
+  if (!quote) throw new Error("Tilbud ikke fundet");
+  if (!["draft", "sent"].includes(quote.status)) {
+    throw new Error("Tilbuddet er låst — kan ikke redigeres");
+  }
+
+  // Sikkerhed: produktet er paa denne tenant
+  const product = await db.product.findFirst({
+    where: { id: productId, tenantId, isActive: true },
+    include: { pricing: true },
+  });
+  if (!product) throw new Error("Produkt ikke fundet");
+
+  const isSaaS = product.pricingMode === "per_user_per_period";
+  const seats           = Number(formData.get("seats") ?? 1);
+  const pricingInterval = String(formData.get("pricingInterval") ?? (isSaaS ? "monthly" : "onetime"));
+  const billingInterval = String(formData.get("billingInterval") ?? pricingInterval);
+  const overrideRaw     = String(formData.get("unitPriceOverride") ?? "");
+  const discountPct     = Number(formData.get("discountPct") ?? 0);
+
+  // Find listepris for valgt interval
+  const matched = product.pricing.find((p) => p.interval === pricingInterval) ?? product.pricing[0];
+  const listPrice = matched ? Number(matched.price) : 0;
+  const unitPriceOverride = overrideRaw ? Number(overrideRaw) : null;
+  const effectiveUnitPrice = unitPriceOverride ?? listPrice;
+
+  // Beskrivelse: SaaS faar "Produkt — N pladser", ellers bare produktnavn
+  const description = isSaaS
+    ? `${product.name} — ${seats} ${seats === 1 ? "plads" : "pladser"}`
+    : product.name;
+
+  const lastSort = await db.quoteLine.findFirst({
+    where: { quoteId },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  await db.quoteLine.create({
+    data: {
+      quoteId,
+      description,
+      // For SaaS: quantity = seats (saa totalen subtotal × periodemultiplier kan beregnes)
+      // For ikke-SaaS: quantity = seats (= antal stk)
+      quantity: seats,
+      unitPrice: effectiveUnitPrice,
+      discountPct,
+      type: "product",
+      productId,
+      sortOrder: (lastSort?.sortOrder ?? 0) + 1,
+      // SaaS-felter
+      seats,
+      pricingInterval,
+      billingInterval,
+      unitPriceOverride,
+    },
+  });
+
+  revalidatePath(`/quotes/${quoteId}`);
+}
+
+export async function removeQuoteProduct(lineId: string, quoteId: string) {
+  const tenantId = await requireTenant();
+  const quote = await db.quote.findFirst({
+    where: { id: quoteId, tenantId },
+    select: { status: true },
+  });
+  if (!quote || !["draft", "sent"].includes(quote.status)) {
+    throw new Error("Tilbuddet kan ikke redigeres");
+  }
+  await db.quoteLine.delete({ where: { id: lineId } });
+  revalidatePath(`/quotes/${quoteId}`);
+}
+
+// ─── Linjer (manuelle) ──────────────────────────────────────────────────
 
 export async function upsertQuoteLine(quoteId: string, formData: FormData) {
   const tenantId = await requireTenant();
@@ -305,7 +404,7 @@ export async function convertQuoteToInvoice(id: string) {
         createdById,
         createdByImpersonatorId,
         lines: {
-          create: quote.lines.map((l) => ({
+          create: quote.lines.map((l: any) => ({
             description: l.description,
             quantity:    l.quantity,
             unitPrice:   l.unitPrice,
@@ -313,6 +412,12 @@ export async function convertQuoteToInvoice(id: string) {
             type:        l.type,
             sortOrder:   l.sortOrder,
             productId:   l.productId,
+            // Beholder SaaS-info paa fakturaen saa udskrift kan vise
+            // "X pladser × pris pr. md, faktureret aarligt"
+            seats:             l.seats,
+            pricingInterval:   l.pricingInterval,
+            billingInterval:   l.billingInterval,
+            unitPriceOverride: l.unitPriceOverride,
           })),
         },
       },

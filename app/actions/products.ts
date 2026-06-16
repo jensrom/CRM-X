@@ -96,9 +96,26 @@ export async function getProductCategories() {
 
 // ── Opret produkt ────────────────────────────────────────────────────────────
 
+/**
+ * Maps produkt-type til en sensibel pricingMode.
+ *   • saas + subscription → per_user_per_period (kr/bruger/periode)
+ *   • alle andre          → per_unit (kr × antal)
+ *
+ * Brugeren kan overskrive efterfølgende, men default skal "bare spille".
+ */
+function defaultPricingModeForType(type: string): "per_unit" | "per_user_per_period" {
+  return type === "saas" || type === "subscription" ? "per_user_per_period" : "per_unit";
+}
+
 export async function createProduct(formData: FormData) {
   const session = await getSession();
   const tenantId = session.user.tenantId!;
+  const type = (formData.get("type") as string) || "other";
+  // Hvis brugeren ikke eksplicit har valgt pricingMode, foelg type-defaulten
+  const explicitMode = formData.get("pricingMode") as string;
+  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period")
+    ? explicitMode
+    : defaultPricingModeForType(type);
 
   const product = await db.product.create({
     data: {
@@ -107,7 +124,8 @@ export async function createProduct(formData: FormData) {
       description: (formData.get("description") as string) || null,
       sku: (formData.get("sku") as string) || null,
       category: (formData.get("category") as string) || null,
-      type: (formData.get("type") as string) || "other",
+      type,
+      pricingMode,
       isActive: true,
     },
   });
@@ -122,6 +140,12 @@ export async function updateProduct(formData: FormData) {
   const session = await getSession();
   const id = formData.get("id") as string;
   const isActiveStr = formData.get("isActive") as string;
+  const type = (formData.get("type") as string) || "other";
+  // Brugeren kan eksplicit vælge pricingMode i UI. Hvis ikke, foelg type-defaulten.
+  const explicitMode = formData.get("pricingMode") as string;
+  const pricingMode = (explicitMode === "per_unit" || explicitMode === "per_user_per_period")
+    ? explicitMode
+    : defaultPricingModeForType(type);
 
   await db.product.updateMany({
     where: { id, tenantId: session.user.tenantId! },
@@ -130,7 +154,8 @@ export async function updateProduct(formData: FormData) {
       description: (formData.get("description") as string) || null,
       sku: (formData.get("sku") as string) || null,
       category: (formData.get("category") as string) || null,
-      type: (formData.get("type") as string) || "other",
+      type,
+      pricingMode,
       isActive: isActiveStr === "true",
     },
   });

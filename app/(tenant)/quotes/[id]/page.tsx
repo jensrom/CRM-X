@@ -2,6 +2,7 @@ import {
   getQuote, updateQuote, upsertQuoteLine, deleteQuoteLine,
   sendQuote, acceptQuote, rejectQuote, convertQuoteToInvoice, deleteQuote,
 } from "@/app/actions/quotes";
+import { getProducts } from "@/app/actions/products";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,8 @@ import {
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
+import { QuoteProductsPanel } from "@/components/quotes/QuoteProductsPanel";
+import { lineTotal, type BillingIntervalSlug } from "@/lib/billing-intervals";
 
 const STATUS_OPTS: Record<string, { label: string; bg: string }> = {
   draft:    { label: "Kladde",     bg: "bg-slate-100 text-slate-700" },
@@ -39,8 +42,44 @@ export default async function QuoteDetailPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const quote = await getQuote(id);
+  const [quote, allProducts] = await Promise.all([
+    getQuote(id),
+    getProducts({ isActive: true }),
+  ]);
   if (!quote) notFound();
+
+  // Serialiser produkter til client-komponenten
+  const availableProducts = (allProducts as any[]).map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    pricingMode: (p.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period",
+    pricing: (p.pricing ?? []).map((pp: any) => ({ interval: pp.interval, price: Number(pp.price) })),
+  }));
+
+  // Adskil produkt-linjer fra manuelle linjer
+  const productLines = quote.lines.filter((l: any) => l.productId);
+  const manualLines  = quote.lines.filter((l: any) => !l.productId);
+
+  const serializedProductLines = productLines.map((l: any) => ({
+    id: l.id,
+    description: l.description,
+    quantity: Number(l.quantity),
+    unitPrice: Number(l.unitPrice),
+    discountPct: Number(l.discountPct),
+    productId: l.productId,
+    product: l.product ? {
+      id: l.product.id,
+      name: l.product.name,
+      type: l.product.type,
+      pricingMode: (l.product.pricingMode ?? "per_unit") as "per_unit" | "per_user_per_period",
+      pricing: (l.product.pricing ?? []).map((pp: any) => ({ interval: pp.interval, price: Number(pp.price) })),
+    } : null,
+    seats: l.seats,
+    pricingInterval: l.pricingInterval,
+    billingInterval: l.billingInterval,
+    unitPriceOverride: l.unitPriceOverride ? Number(l.unitPriceOverride) : null,
+  }));
 
   const backHref =
     from && from.startsWith("/") && !from.startsWith("//") ? from : "/quotes";
@@ -54,10 +93,22 @@ export default async function QuoteDetailPage({
   const displayStatus = isExpired ? "expired" : quote.status;
   const statusMeta = STATUS_OPTS[displayStatus] ?? STATUS_OPTS.draft;
 
-  // Total beregning
-  const subtotal = quote.lines.reduce((s, l) => {
-    const base = Number(l.quantity) * Number(l.unitPrice);
+  // Total beregning — SaaS-linjer bruger lineTotal med periode-multiplikator,
+  // manuelle linjer bruger flad pris × quantity
+  const subtotal = quote.lines.reduce((s, l: any) => {
     const disc = Number(l.discountPct ?? 0);
+    let base: number;
+    if (l.productId && l.product?.pricingMode === "per_user_per_period") {
+      base = lineTotal({
+        pricingMode: "per_user_per_period",
+        unitPrice: Number(l.unitPrice),
+        seats: l.seats ?? Number(l.quantity),
+        pricingInterval: (l.pricingInterval ?? "monthly") as BillingIntervalSlug,
+        billingInterval: (l.billingInterval ?? "annual") as BillingIntervalSlug,
+      });
+    } else {
+      base = Number(l.quantity) * Number(l.unitPrice);
+    }
     return s + base * (1 - disc / 100);
   }, 0);
   const vatAmount = quote.vatEnabled ? subtotal * (VAT_PCT / 100) : 0;
@@ -258,22 +309,32 @@ export default async function QuoteDetailPage({
           )}
         </div>
 
-        {/* HØJRE — linjer + total */}
+        {/* HØJRE — produkt-linjer (SaaS-aware) + manuelle linjer + total */}
         <div className="xl:col-span-2 space-y-4">
+
+          {/* Produkt-panel (SaaS-aware, pris-pr-bruger-pr-md) */}
+          <QuoteProductsPanel
+            quoteId={id}
+            productLines={serializedProductLines}
+            availableProducts={availableProducts}
+            editable={editable}
+          />
+
+          {/* Manuelle linjer (timer, rabat, fri-tekst) */}
           <div className="bg-card border border-border rounded-xl p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold">Linjer ({quote.lines.length})</h2>
+              <h2 className="text-sm font-semibold">Manuelle linjer ({manualLines.length})</h2>
             </div>
 
-            {quote.lines.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">
-                Ingen linjer endnu — tilføj første nedenfor.
+            {manualLines.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-3 text-center">
+                Tilføj manuelle linjer for timer, rabatter eller fri-tekst.
               </p>
             ) : (
               <div className="divide-y divide-border -mx-4">
-                {quote.lines.map((l) => {
+                {manualLines.map((l: any) => {
                   const base = Number(l.quantity) * Number(l.unitPrice);
-                  const lineTotal = base * (1 - Number(l.discountPct) / 100);
+                  const tot = base * (1 - Number(l.discountPct) / 100);
                   return (
                     <div key={l.id} className="px-4 py-2.5 flex items-center gap-3 text-sm hover:bg-secondary/20">
                       <div className="flex-1 min-w-0">
@@ -284,7 +345,7 @@ export default async function QuoteDetailPage({
                         </p>
                       </div>
                       <span className="font-mono text-sm tabular-nums w-28 text-right">
-                        {formatCurrency(lineTotal)}
+                        {formatCurrency(tot)}
                       </span>
                       {editable && (
                         <form action={deleteQuoteLine.bind(null, l.id, id)}>
