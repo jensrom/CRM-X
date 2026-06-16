@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Bell, Search, Timer, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "./NotificationBell";
 
 interface ActiveCheckIn {
   projectTitle: string;
@@ -84,15 +85,8 @@ export function AppTopbar({
           </kbd>
         </button>
 
-        {/* Notifikationer */}
-        <button className="relative p-2 rounded-lg hover:bg-secondary transition-colors">
-          <Bell className="h-4.5 w-4.5 text-muted-foreground" />
-          {notificationCount > 0 && (
-            <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center leading-none">
-              {notificationCount > 9 ? "9+" : notificationCount}
-            </span>
-          )}
-        </button>
+        {/* Notifikationer — self-fetching + polling */}
+        <NotificationBell />
       </div>
     </header>
   );

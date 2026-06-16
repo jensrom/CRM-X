@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, Ticket, Key, Scissors, TrendingUp, Info, X } from "lucide-react";
-import { markAsRead, markAllAsRead } from "@/app/actions/notifications";
+import { markAsRead, markAllAsRead, getMyNotifications, getUnreadCount } from "@/app/actions/notifications";
 import Link from "next/link";
 
 type Notification = {
@@ -42,14 +42,44 @@ export function NotificationBell({
   initialNotifications,
   initialUnread,
 }: {
-  initialNotifications: Notification[];
-  initialUnread: number;
+  initialNotifications?: Notification[];
+  initialUnread?: number;
 }) {
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState(initialNotifications);
-  const [unread, setUnread] = useState(initialUnread);
+  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications ?? []);
+  const [unread, setUnread] = useState(initialUnread ?? 0);
   const [isPending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
+
+  // Self-fetch hvis ingen initial data — saa kan komponenten bruges uden at parent skal hente noget
+  useEffect(() => {
+    if (initialNotifications !== undefined && initialUnread !== undefined) return;
+    (async () => {
+      try {
+        const [list, count] = await Promise.all([getMyNotifications(20), getUnreadCount()]);
+        setNotifications(list as any);
+        setUnread(count);
+      } catch {}
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Polling hver 60s — fanger nye notifikationer uden refresh
+  useEffect(() => {
+    const tick = async () => {
+      try {
+        const newCount = await getUnreadCount();
+        // Kun re-fetch listen hvis count aendrer sig eller dropdown er aabent
+        if (newCount !== unread || open) {
+          const list = await getMyNotifications(20);
+          setNotifications(list as any);
+        }
+        setUnread(newCount);
+      } catch {}
+    };
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [open, unread]);
 
   // Luk ved klik udenfor
   useEffect(() => {
@@ -61,6 +91,16 @@ export function NotificationBell({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Escape lukker
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open]);
 
   function handleMarkOne(id: string) {
     startTransition(async () => {
