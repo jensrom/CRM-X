@@ -11,6 +11,79 @@ async function getSession() {
   return session;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Sender selve faktura-mailen — via brugerens mailbox eller system-mail.
+ * Markerer ogsaa invoice.status="sent" hvis status er "draft" og afsendelsen lykkes.
+ */
+export async function emailInvoice(invoiceId: string, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.tenantId || !session.user.id) throw new Error("Ikke autoriseret");
+  const tenantId = session.user.tenantId;
+  const userId = session.user.id;
+
+  const { sendMail } = await import("@/lib/email");
+
+  const invoice = await db.invoice.findFirst({
+    where: { id: invoiceId, tenantId },
+    include: {
+      company: { select: { name: true } },
+      tenant:  { select: { name: true, invoicePrefix: true } },
+    },
+  });
+  if (!invoice) throw new Error("Faktura ikke fundet");
+
+  const via = (String(formData.get("via")) === "system" ? "system" : "user") as "system" | "user";
+  const to      = String(formData.get("to") ?? "");
+  const subject = String(formData.get("subject") ?? "");
+  const message = String(formData.get("message") ?? "");
+
+  if (!to || !subject) throw new Error("Modtager og emne paakraevet");
+
+  const ref = `${invoice.tenant.invoicePrefix ?? "F"}-${String(invoice.number).padStart(4, "0")}`;
+  const html = `
+    <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 600px; color:#222;">
+      <p>${escapeHtml(message).replace(/\n/g, "<br/>")}</p>
+      <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
+      <p style="font-size:12px; color:#888;">
+        Faktura ${ref} fra ${escapeHtml(invoice.tenant.name)} til ${escapeHtml(invoice.company.name)}
+      </p>
+    </div>
+  `;
+  const text = `${message}\n\n—\nFaktura ${ref} fra ${invoice.tenant.name} til ${invoice.company.name}`;
+
+  const result = await sendMail({
+    via, tenantId, userId,
+    to:      to.split(",").map((s) => s.trim()).filter(Boolean),
+    subject,
+    html, text,
+    resourceType: "invoice",
+    resourceId:   invoiceId,
+  });
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Kunne ikke sende mail");
+  }
+
+  // Marker som sendt hvis kladde
+  if (invoice.status === "draft") {
+    await db.invoice.update({
+      where: { id: invoiceId },
+      data: { status: "sent" },
+    });
+  }
+
+  revalidatePath(`/invoices/${invoiceId}`);
+}
+
 async function nextInvoiceNumber(tenantId: string): Promise<number> {
   const last = await db.invoice.findFirst({
     where: { tenantId },

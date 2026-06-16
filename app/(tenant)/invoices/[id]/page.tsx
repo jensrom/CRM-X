@@ -1,4 +1,4 @@
-import { getInvoice, updateInvoice, deleteInvoice, upsertInvoiceLine, deleteInvoiceLine } from "@/app/actions/invoices";
+import { getInvoice, updateInvoice, deleteInvoice, upsertInvoiceLine, deleteInvoiceLine, emailInvoice } from "@/app/actions/invoices";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,9 @@ import {
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
+import { SendMailDialog } from "@/components/shared/SendMailDialog";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 
 const STATUS_OPTS = [
   { value: "draft",     label: "Kladde" },
@@ -36,8 +39,44 @@ export default async function InvoiceDetailPage({
 }) {
   const { id } = await params;
   const { from } = await searchParams;
-  const invoice = await getInvoice(id);
+  const session = await auth();
+  const [invoice, mailMe, mailTenant] = await Promise.all([
+    getInvoice(id),
+    session?.user?.id
+      ? db.user.findFirst({
+          where: { id: session.user.id },
+          select: { emailProvider: true, connectedEmailAddress: true },
+        })
+      : Promise.resolve(null),
+    session?.user?.tenantId
+      ? db.tenant.findFirst({
+          where: { id: session.user.tenantId },
+          select: { systemEmailFromAddress: true },
+        })
+      : Promise.resolve(null),
+  ]);
   if (!invoice) notFound();
+
+  // Find foerste kontakt-mail paa kunden til pre-udfyld
+  const primaryContact = invoice.company
+    ? await db.contact.findFirst({
+        where: { companyId: (invoice as any).companyId },
+        orderBy: { createdAt: "asc" },
+        select: { email: true, firstName: true },
+      }).catch(() => null)
+    : null;
+
+  const userMailbox = mailMe?.emailProvider && mailMe.connectedEmailAddress
+    ? { provider: mailMe.emailProvider as "microsoft" | "google", address: mailMe.connectedEmailAddress }
+    : null;
+  const systemMailbox = mailTenant?.systemEmailFromAddress
+    ? { address: mailTenant.systemEmailFromAddress }
+    : null;
+
+  async function handleEmailSubmit(formData: FormData) {
+    "use server";
+    await emailInvoice(id, formData);
+  }
 
   // Server-side "tilbage"-mål. Hvis brugeren kom fra en kunde-side
   // (eller hvor som helst med ?from=), respektér det. Ellers default til faktura-listen.
@@ -71,12 +110,30 @@ export default async function InvoiceDetailPage({
 
 
       <BackButton href={backHref} />
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
-        <Link href="/invoices" className="hover:text-foreground transition-colors">Fakturaer</Link>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="font-mono text-xs">{invoiceRef}</span>
-        <ChevronRight className="h-3.5 w-3.5" />
-        <span className="text-foreground font-medium">{invoice.company.name}</span>
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
+          <Link href="/invoices" className="hover:text-foreground transition-colors">Fakturaer</Link>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <span className="font-mono text-xs">{invoiceRef}</span>
+          <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+          <span className="text-foreground font-medium truncate">{invoice.company.name}</span>
+        </div>
+        <div className="w-auto">
+          <SendMailDialog
+            triggerLabel="Send faktura via mail"
+            defaultTo={primaryContact?.email ?? (invoice as any).company?.invoiceEmail ?? ""}
+            defaultSubject={`Faktura ${invoiceRef} fra ${(invoice as any).tenant?.name ?? "Plesner Tech"}`}
+            defaultMessage={
+              `Hej${primaryContact?.firstName ? " " + primaryContact.firstName : ""}\n\n` +
+              `Vedhæftet faktura ${invoiceRef} på ${new Intl.NumberFormat("da-DK").format(Math.round(total))} kr inkl. moms.\n\n` +
+              `Betalingsfrist fremgår af fakturaen. Sig endelig til hvis der er spørgsmål.\n\n` +
+              `Mvh\n${(session?.user as any)?.name ?? "Plesner Tech"}`
+            }
+            userMailbox={userMailbox}
+            systemMailbox={systemMailbox}
+            onSubmit={handleEmailSubmit}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

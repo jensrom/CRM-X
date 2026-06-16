@@ -6,8 +6,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import {
-  Mail, Check, AlertTriangle, Send, Unplug, ExternalLink, ShieldCheck, User as UserIcon,
+  Mail, Check, AlertTriangle, Send, Unplug, ExternalLink, ShieldCheck, User as UserIcon, History,
 } from "lucide-react";
+import Link from "next/link";
 import {
   updateSystemEmailConfig,
   markSystemEmailVerified,
@@ -245,6 +246,23 @@ export default async function EmailSettingsPage({
             </form>
           </section>
         )}
+
+        {/* Email-log link */}
+        <Link
+          href="/settings/email-log"
+          className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <History className="h-4 w-4 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium group-hover:text-primary transition-colors">Email-historik</p>
+              <p className="text-xs text-muted-foreground">Audit-spor over alle sendte mails (12 mdr retention)</p>
+            </div>
+          </div>
+          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+        </Link>
 
         {/* Sikkerheds-info */}
         <p className="text-xs text-muted-foreground px-1">
