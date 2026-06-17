@@ -612,6 +612,10 @@ model HourBundle {
   expiresAt    DateTime?
   notes        String?
   isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  // Creator-traceback
+  createdById             String?
+  createdByImpersonatorId String?
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company        Company         @relation(fields: [companyId], references: [id])
@@ -1001,6 +1005,9 @@ model Invoice {
   vatEnabled   Boolean   @default(true)   // 25% dansk moms
   vatPct       Decimal   @db.Decimal(5,2) @default(25) // Momsprocent (default 25)
   customerType String    @default("B2B")  // B2B | B2C
+  // Creator-traceback
+  createdById             String?
+  createdByImpersonatorId String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

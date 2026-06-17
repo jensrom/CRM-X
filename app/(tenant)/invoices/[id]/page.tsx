@@ -11,6 +11,7 @@ import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
 import { MailtoSendButton } from "@/components/shared/MailtoSendButton";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 
@@ -163,6 +164,15 @@ export default async function InvoiceDetailPage({
                 <span>Total inkl. moms</span>
                 <span className="text-primary tabular-nums">{formatCurrency(total)}</span>
               </div>
+            </div>
+
+            {/* Creator-traceback */}
+            <div className="pt-3 border-t border-border">
+              <CreatorBadge
+                createdById={(invoice as any).createdById}
+                createdByImpersonatorId={(invoice as any).createdByImpersonatorId}
+                createdAt={invoice.createdAt}
+              />
             </div>
 
             <form action={updateInvoice} className="space-y-3">

@@ -14,6 +14,7 @@ import { formatDate, formatDuration, formatRef, TICKET_STATUS, TICKET_PRIORITY }
 import { auth } from "@/lib/auth";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 
 const STATUS_FLOW = [
   { value: "open",             label: "Åben"                 },
@@ -131,8 +132,12 @@ export default async function TicketDetailPage({
               )}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground space-y-0.5">
-              <p>Oprettet {formatDate(ticket.createdAt)}</p>
+            <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground space-y-1">
+              <CreatorBadge
+                createdById={(ticket as any).createdById}
+                createdByImpersonatorId={(ticket as any).createdByImpersonatorId}
+                createdAt={ticket.createdAt}
+              />
               {ticket.resolvedAt && <p>Løst {formatDate(ticket.resolvedAt)}</p>}
               {ticket.closedAt && <p>Lukket {formatDate(ticket.closedAt)}</p>}
             </div>

@@ -293,6 +293,8 @@ export async function createInvoice(formData: FormData) {
   }
 
   const number = await nextInvoiceNumber(tenantId);
+  const { getCreatorContext } = await import("@/lib/creator-context");
+  const _creator = await getCreatorContext();
 
   const invoice = await db.invoice.create({
     data: {
@@ -305,6 +307,8 @@ export async function createInvoice(formData: FormData) {
       notes,
       customerType,
       vatEnabled,
+      createdById: _creator.createdById,
+      createdByImpersonatorId: _creator.createdByImpersonatorId,
     } as any,
   });
 

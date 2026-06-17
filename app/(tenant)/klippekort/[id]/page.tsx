@@ -13,6 +13,7 @@ import {
 import { formatDate, formatRef } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
+import { CreatorBadge } from "@/components/shared/CreatorBadge";
 
 function formatDur(min: number) {
   const h = Math.floor(min / 60);
@@ -304,6 +305,14 @@ export default async function BundleDetailPage({
                 <Trash2 className="h-3.5 w-3.5" /> Slet klippekort
               </Button>
             </form>
+
+            <div className="mt-4 pt-3 border-t border-border">
+              <CreatorBadge
+                createdById={(bundle as any).createdById}
+                createdByImpersonatorId={(bundle as any).createdByImpersonatorId}
+                createdAt={(bundle as any).createdAt ?? bundle.purchaseDate}
+              />
+            </div>
           </div>
 
           {/* Tilknyttede projekter */}
