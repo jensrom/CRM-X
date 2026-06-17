@@ -1,4 +1,6 @@
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { getDashboardData } from "@/app/actions/dashboard";
 import {
@@ -86,6 +88,20 @@ export default async function DashboardPage() {
   const session = await auth();
   const name = session?.user?.name?.split(" ")[0] ?? "der";
   const modules = session?.user?.modules ?? [];
+
+  // Onboarding-gate: hvis admin og ikke faerdig → send til wizard
+  if (session?.user?.tenantId) {
+    const tenant = await db.tenant.findFirst({
+      where: { id: session.user.tenantId },
+      select: { onboardingCompletedAt: true },
+    });
+    if (!tenant?.onboardingCompletedAt) {
+      const role = (session.user.role ?? "").toLowerCase();
+      if (["admin", "administrator", "super_admin"].includes(role)) {
+        redirect("/onboarding");
+      }
+    }
+  }
 
   const hasSales = modules.includes("sales");
   const hasSupport = modules.includes("support");

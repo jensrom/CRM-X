@@ -87,6 +87,12 @@ model Tenant {
   invoicePrefix String   @default("F")
   quotePrefix   String   @default("Q")
 
+  // --- Onboarding ─────────────────────────────────────────────
+  // Naar onboardingCompletedAt er sat, springer dashboardet wizard'en over.
+  // onboardingStep husker hvor langt brugeren var hvis de forlod halvvejs.
+  onboardingCompletedAt DateTime?
+  onboardingStep        String?   // "welcome" | "company" | "branding" | "team" | "done"
+
   // --- System-email config ─────────────────────────────────────
   // System-mails (invites, notifikationer, faktura-kvittering) afsendes via
   // Resend fra et verificeret domaene. Personlige mails afsendes fra brugerens
