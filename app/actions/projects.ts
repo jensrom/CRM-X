@@ -537,6 +537,70 @@ export async function getMyCheckIn() {
 
   return db.activeCheckIn.findUnique({
     where: { userId: session.user.id },
-    include: { user: { select: { name: true } } },
+    include: {
+      user: { select: { name: true } },
+    },
+  });
+}
+
+/**
+ * Henter brugerens aktive check-in PLUS projekt-info til UI.
+ * Returnerer null hvis ingen check-in. Bruges af TimerWidget i topbar.
+ */
+export async function getMyCheckInWithProject() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+
+  const ci = await db.activeCheckIn.findUnique({
+    where: { userId: session.user.id },
+  });
+  if (!ci) return null;
+
+  const project = await db.project.findFirst({
+    where: { id: ci.projectId },
+    select: { id: true, title: true, number: true, company: { select: { name: true } } },
+  });
+
+  return {
+    startedAt:     ci.startedAt,
+    projectId:     ci.projectId,
+    projectTitle:  project?.title ?? "Ukendt projekt",
+    projectNumber: project?.number ?? 0,
+    companyName:   project?.company?.name ?? "",
+    backlogItemId: ci.backlogItemId,
+  };
+}
+
+/**
+ * Lister aktive projekter for current bruger — bruges af quick-start dropdown.
+ * Sorteret efter "mine projekter" (assignedToId = mig) foerst, derefter alle andre aktive.
+ */
+export async function getMyActiveProjectsForTimer(take = 20) {
+  const session = await auth();
+  if (!session?.user?.id || !session?.user?.tenantId) return [];
+
+  const projects = await db.project.findMany({
+    where: {
+      tenantId: session.user.tenantId,
+      status:   { in: ["active", "waiting"] },
+    },
+    select: {
+      id:    true,
+      title: true,
+      number: true,
+      assignedToId: true,
+      company: { select: { name: true } },
+      tenant:  { select: { projectPrefix: true } },
+    },
+    orderBy: [{ updatedAt: "desc" }],
+    take,
+  });
+
+  // "Mine projekter" foerst
+  const myId = session.user.id;
+  return projects.sort((a, b) => {
+    const aMine = a.assignedToId === myId ? 0 : 1;
+    const bMine = b.assignedToId === myId ? 0 : 1;
+    return aMine - bMine;
   });
 }

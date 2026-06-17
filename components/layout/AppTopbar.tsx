@@ -1,47 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Bell, Search, Timer, X, ChevronDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { NotificationBell } from "./NotificationBell";
+/**
+ * AppTopbar
+ * ─────────
+ * Topbar med side-titel + globale widgets (timer, notifikationer, soeg).
+ *
+ * Alle widgets er self-fetching client-components, saa pages kan bruge
+ * <AppTopbar pageTitle="..." /> uden at hente noget data foerst.
+ */
 
-interface ActiveCheckIn {
-  projectTitle: string;
-  startedAt: Date;
-}
+import { Search } from "lucide-react";
+import { NotificationBell } from "./NotificationBell";
+import { TimerWidget } from "./TimerWidget";
 
 interface AppTopbarProps {
   pageTitle: string;
-  activeCheckIn?: ActiveCheckIn | null;
-  onStopCheckIn?: () => void;
-  notificationCount?: number;
 }
 
-export function AppTopbar({
-  pageTitle,
-  activeCheckIn,
-  onStopCheckIn,
-  notificationCount = 0,
-}: AppTopbarProps) {
-  const [elapsed, setElapsed] = useState("00:00:00");
-
-  // Tæl tid siden check-in
-  useEffect(() => {
-    if (!activeCheckIn) return;
-
-    const interval = setInterval(() => {
-      const diff = Date.now() - new Date(activeCheckIn.startedAt).getTime();
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setElapsed(
-        `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-      );
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeCheckIn]);
-
+export function AppTopbar({ pageTitle }: AppTopbarProps) {
   return (
     <header
       className="fixed top-0 right-0 bg-card border-b border-border flex items-center justify-between px-6 z-20"
@@ -54,24 +30,8 @@ export function AppTopbar({
       <h1 className="text-base font-semibold text-foreground">{pageTitle}</h1>
 
       <div className="flex items-center gap-2">
-        {/* Aktiv check-in indikator */}
-        {activeCheckIn && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20 text-success text-xs font-medium">
-            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-            <Timer className="h-3.5 w-3.5" />
-            <span className="font-mono">{elapsed}</span>
-            <span className="text-success/70 max-w-[120px] truncate">
-              {activeCheckIn.projectTitle}
-            </span>
-            <button
-              onClick={onStopCheckIn}
-              className="ml-1 hover:text-success/60 transition-colors"
-              title="Stop tidregistrering"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        )}
+        {/* Tidsregistrering — self-fetching, live tikker */}
+        <TimerWidget />
 
         {/* Søg */}
         <button
