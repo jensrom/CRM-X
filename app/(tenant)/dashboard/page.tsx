@@ -5,6 +5,8 @@ import { AppTopbar } from "@/components/layout/AppTopbar";
 import { getDashboardData } from "@/app/actions/dashboard";
 import { getMyCurrentTarget } from "@/app/actions/sales-targets";
 import { MyTargetWidget } from "@/components/dashboard/MyTargetWidget";
+import { getAtRiskCompanies } from "@/app/actions/health-score";
+import { AtRiskCustomersWidget } from "@/components/dashboard/AtRiskCustomersWidget";
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import {
   Building2, Ticket, TrendingUp, Timer, AlertTriangle, CheckCircle2,
@@ -113,6 +115,7 @@ export default async function DashboardPage() {
 
   const d = await getDashboardData();
   const myTarget = await getMyCurrentTarget().catch(() => null);
+  const atRiskCompanies = await getAtRiskCompanies(5).catch(() => []);
   if (!d) return null;
 
   const activeProjects = d.projectsByStatus["active"] ?? 0;
@@ -184,6 +187,11 @@ export default async function DashboardPage() {
 
         {/* Mit salgsmål — kun synlig hvis et mål er sat */}
         {myTarget && <MyTargetWidget target={myTarget} />}
+
+        {/* Kunder i risiko — kun synlig hvis health-scores er beregnet */}
+        {atRiskCompanies.length > 0 && (
+          <AtRiskCustomersWidget rows={atRiskCompanies as any} />
+        )}
 
         {/* KPI */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

@@ -24,6 +24,9 @@ import {
 } from "@/components/companies/TabPreviews";
 import { AttachmentSection } from "@/components/attachments/AttachmentSection";
 import { listAttachments } from "@/app/actions/attachments";
+import { HealthBadge } from "@/components/companies/HealthBadge";
+import { recalcCompanyHealth } from "@/app/actions/health-score";
+import { RefreshCw } from "lucide-react";
 
 export default async function CompanyDetailPage({
   params, searchParams,
@@ -161,6 +164,32 @@ function OverblikTab({ company }: { company: any }) {
   const activeProjects = company.projects.filter((p: any) => p.status === "active");
 
   return (
+    <>
+      {/* Health-score øverst på overblik-tab */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="md:col-span-1">
+          <HealthBadge
+            score={(company as any).healthScore}
+            signals={(company as any).healthSignals}
+            size="lg"
+          />
+          <form action={recalcCompanyHealth.bind(null, company.id)} className="mt-2">
+            <button
+              type="submit"
+              className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Genberegn nu
+            </button>
+            {(company as any).healthScoreUpdatedAt && (
+              <span className="text-[10px] text-muted-foreground ml-2">
+                Sidst opdateret {new Date((company as any).healthScoreUpdatedAt).toLocaleDateString("da-DK")}
+              </span>
+            )}
+          </form>
+        </div>
+      </div>
+
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <Section title={`Kontakter (${company.contacts.length})`} icon={Users}
         action={<Link href={`/contacts/new?companyId=${company.id}`}><Button variant="ghost" size="sm"><Plus className="h-3.5 w-3.5" />Tilføj</Button></Link>}>
@@ -199,6 +228,7 @@ function OverblikTab({ company }: { company: any }) {
         </div>
       </Section>
     </div>
+    </>
   );
 }
 

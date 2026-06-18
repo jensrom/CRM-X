@@ -358,6 +358,12 @@ model Company {
   industry     String?
   notes        String?  @db.Text
   isActive     Boolean  @default(true)
+  // --- Health score (0-100) ---
+  // Beregnet runtime via lib/health-score.ts. null = ikke beregnet endnu.
+  // healthSignals: { engagement, support, bundles, licenses, payment, ageDays, ... }
+  healthScore        Int?
+  healthSignals      Json?
+  healthScoreUpdatedAt DateTime?
   // Sporbarhed: hvem oprettede ressourcen
   // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
   // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
@@ -381,6 +387,7 @@ model Company {
   invoices         Invoice[]
   quotes           Quote[]
   attachments      Attachment[]
+  healthSnapshots  CompanyHealthSnapshot[]
 
   @@map("companies")
 }
@@ -1291,12 +1298,22 @@ model SalesTarget {
   notes        String?  @db.Text
   createdById  String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    
+// ============================================================
+// COMPANY HEALTH SNAPSHOT — trend-historik for health score
+// ============================================================
+// Skrives én gang pr. recalc. Bruges til at vise trend-pil "↑ +8 sidste uge"
+// + grafer for "kundens helbreds-udvikling" over tid.
+model CompanyHealthSnapshot {
+  id         String   @id @default(cuid())
+  tenantId   String
+  companyId  String
+  score      Int      // 0-100
+  signals    Json     // snapshot af signaler ved tidspunktet
+  capturedAt DateTime @default(now())
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User?  @relation("SalesTargetOwner", fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, userId, periodStart, targetType])
-  @@index([tenantId, periodStart])
-  @@map("sales_targets")
+  @@index([tenantId, companyId, capturedAt])
+  @@map("company_health_snapshots")
 }

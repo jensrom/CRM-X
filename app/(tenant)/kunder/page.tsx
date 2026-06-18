@@ -4,17 +4,26 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Plus, Phone, Mail, MapPin, Upload } from "lucide-react";
+import { Building2, Plus, Phone, Mail, MapPin, Upload, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
+import { HealthBadge } from "@/components/companies/HealthBadge";
+import { recalcAllCompanyHealth } from "@/app/actions/health-score";
 
 export default async function CompaniesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string }>;
+  searchParams: Promise<{ search?: string; health?: string }>;
 }) {
   const sp = await searchParams;
-  const companies = await getCompanies(sp.search);
+  let companies = await getCompanies(sp.search);
+
+  // Filter: ?health=risk viser kun kunder med score < 60
+  if (sp.health === "risk") {
+    companies = companies.filter((c: any) => c.healthScore != null && c.healthScore < 60);
+  } else if (sp.health === "attention") {
+    companies = companies.filter((c: any) => c.healthScore != null && c.healthScore < 70);
+  }
 
   return (
     <>
@@ -25,6 +34,12 @@ export default async function CompaniesPage({
         description={`${companies.length} aktive kunder`}
         actions={
           <div className="flex items-center gap-2">
+            <form action={async () => { "use server"; await recalcAllCompanyHealth(); }}>
+              <Button variant="ghost" size="md" type="submit" title="Genberegn alle health-scores">
+                <RefreshCw className="h-4 w-4" />
+                Opdater health
+              </Button>
+            </form>
             <Link href="/kunder/import">
               <Button variant="ghost" size="md">
                 <Upload className="h-4 w-4" />
@@ -40,6 +55,29 @@ export default async function CompaniesPage({
           </div>
         }
       />
+
+      {/* Health-filter chips */}
+      <div className="flex items-center gap-2 mb-4 text-xs">
+        <span className="text-muted-foreground">Vis:</span>
+        <Link
+          href="/kunder"
+          className={`px-2.5 py-1 rounded-full ${!sp.health ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"}`}
+        >
+          Alle
+        </Link>
+        <Link
+          href="/kunder?health=attention"
+          className={`px-2.5 py-1 rounded-full ${sp.health === "attention" ? "bg-amber-500 text-white" : "bg-secondary hover:bg-secondary/80"}`}
+        >
+          Opmærksomhed (&lt;70)
+        </Link>
+        <Link
+          href="/kunder?health=risk"
+          className={`px-2.5 py-1 rounded-full ${sp.health === "risk" ? "bg-rose-500 text-white" : "bg-secondary hover:bg-secondary/80"}`}
+        >
+          Risiko (&lt;60)
+        </Link>
+      </div>
 
       {/* Søgning */}
       <form className="mb-4">
@@ -70,6 +108,7 @@ export default async function CompaniesPage({
             <thead>
               <tr className="border-b border-border bg-secondary/40">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kunde</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Health</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">By</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Kontakt</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Produkter</th>
@@ -97,6 +136,15 @@ export default async function CompaniesPage({
                           )}
                         </div>
                       </div>
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <Link href={`/kunder/${company.id}`} className="block">
+                      <HealthBadge
+                        score={(company as any).healthScore}
+                        signals={(company as any).healthSignals}
+                        size="sm"
+                      />
                     </Link>
                   </td>
                   <td className="px-5 py-3.5 hidden md:table-cell">
