@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { getDashboardData } from "@/app/actions/dashboard";
+import { getMyCurrentTarget } from "@/app/actions/sales-targets";
+import { MyTargetWidget } from "@/components/dashboard/MyTargetWidget";
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import {
   Building2, Ticket, TrendingUp, Timer, AlertTriangle, CheckCircle2,
@@ -110,6 +112,7 @@ export default async function DashboardPage() {
   const hasLicenses = modules.includes("licenses");
 
   const d = await getDashboardData();
+  const myTarget = await getMyCurrentTarget().catch(() => null);
   if (!d) return null;
 
   const activeProjects = d.projectsByStatus["active"] ?? 0;
@@ -178,6 +181,9 @@ export default async function DashboardPage() {
             )}
           </div>
         )}
+
+        {/* Mit salgsmål — kun synlig hvis et mål er sat */}
+        {myTarget && <MyTargetWidget target={myTarget} />}
 
         {/* KPI */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">

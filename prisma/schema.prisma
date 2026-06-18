@@ -157,6 +157,7 @@ model Tenant {
   bundlePricing    BundlePricingTier[]
   apiTokens        ApiToken[]
   attachments      Attachment[]
+  salesTargets     SalesTarget[]
 
   @@map("tenants")
 }
@@ -315,6 +316,7 @@ model User {
   ticketComments  TicketComment[]
   emailLogs       EmailLog[]
   attachments     Attachment[]    @relation("AttachmentUploader")
+  salesTargets    SalesTarget[]   @relation("SalesTargetOwner")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -1265,4 +1267,36 @@ model Attachment {
   @@index([tenantId, projectId, createdAt])
   @@index([tenantId, ticketId, createdAt])
   @@map("attachments")
+}
+
+// ============================================================
+// SALES TARGETS — månedlige/kvartals mål pr. bruger
+// ============================================================
+// Maal hvor:
+//   periodType:  "month" | "quarter" | "year"
+//   targetType:  "revenue" (won deal value) | "won_deals" (antal vundne deals)
+// userId=null → tenant-mål (hele organisationen)
+// Progress beregnes runtime: SUM(Deal.value WHERE stage=won AND
+//   closedAt BETWEEN periodStart AND periodEnd AND assignedToId=userId)
+model SalesTarget {
+  id           String   @id @default(cuid())
+  tenantId     String
+  userId       String?  // null = tenant-niveau
+  periodType   String   @default("month")    // "month" | "quarter" | "year"
+  periodStart  DateTime @db.Date
+  periodEnd    DateTime @db.Date
+  targetType   String   @default("revenue")  // "revenue" | "won_deals"
+  targetAmount Decimal  @db.Decimal(12, 2)
+  currency     String   @default("DKK")
+  notes        String?  @db.Text
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation("SalesTargetOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, periodStart, targetType])
+  @@index([tenantId, periodStart])
+  @@map("sales_targets")
 }
