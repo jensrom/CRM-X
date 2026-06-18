@@ -1228,7 +1228,7 @@ model AuditLog {
   userAgent    String?  @db.Text
   outcome      String   @default("success")
   message      String?  @db.Text
-  createdAt   createdAt    DateTime @default(now())
+  createdAt    DateTime @default(now())
 
   @@index([tenantId, createdAt])
   @@index([actorId, createdAt])
@@ -1238,44 +1238,28 @@ model AuditLog {
 }
 
 // ============================================================
-// ATTACHMENTS — polymorft fil-system
+// ATTACHMENTS — polymorft fil-system (kunde/projekt/ticket)
 // ============================================================
 model Attachment {
-  id            String   @id @default(cuid())
-  tenantId      String
-  uploadedById  String?
-  companyId     String?
-  projectId     String?
-  ticketId      String?
-  filename      String
-  mimeType      String
-  sizeBytes     Int
-  storageProvider String @default("vercel_blob")
-  storageUrl    String   @db.Text
-  storagePath   String   @db.Text
-  createdAt     DateTime @default(now())
+  id              String   @id @default(cuid())
+  tenantId        String
+  uploadedById    String?
+  companyId       String?
+  projectId       String?
+  ticketId        String?
+  filename        String
+  mimeType        String
+  sizeBytes       Int
+  storageProvider String   @default("vercel_blob")
+  storageUrl      String   @db.Text
+  storagePath     String   @db.Text
+  createdAt       DateTime @default(now())
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  uploadedBy   User?    @relation("AttachmentUploader", fields: [uploadedById], references: [id])
-  company      Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  ticket       Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@index([tenantId, companyId, createdAt])
-  @@index([tenantId, projectId, createdAt])
-  @@index([tenantId, ticketId, createdAt])
-  @@map("attachments")
-}
- URL fra @vercel/blob put()
-  storagePath   String   @db.Text  // pathname til del()
-  // Sporbarhed
-  createdAt    DateTime @default(now())
-
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  uploadedBy   User?    @relation("AttachmentUploader", fields: [uploadedById], references: [id])
-  company      Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  ticket       Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy User?    @relation("AttachmentUploader", fields: [uploadedById], references: [id])
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ticket     Ticket?  @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, companyId, createdAt])
   @@index([tenantId, projectId, createdAt])
