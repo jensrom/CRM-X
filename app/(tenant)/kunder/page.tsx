@@ -65,8 +65,8 @@ export default async function CompaniesPage({
           }
         />
       ) : (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <table className="w-full">
+        <div className="bg-card border border-border rounded-xl overflow-x-auto">
+          <table className="w-full min-w-[400px]">
             <thead>
               <tr className="border-b border-border bg-secondary/40">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Kunde</th>

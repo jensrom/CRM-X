@@ -26,6 +26,8 @@ import { BackButton } from "@/components/shared/BackButton";
 import { BundleSearchSelect } from "@/components/shared/BundleSearchSelect";
 import { QrCode } from "@/components/shared/QrCode";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
+import { AttachmentSection } from "@/components/attachments/AttachmentSection";
+import { listAttachments } from "@/app/actions/attachments";
 
 function formatDur(min: number) {
   const h = Math.floor(min / 60);
@@ -480,7 +482,28 @@ export default async function ProjectDetailPage({
             )}
           </div>
         </div>
+
+        {/* Filer-sektion */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Filer</h2>
+          </div>
+          <ProjectFiler projectId={project.id} />
+        </div>
       </div>
     </>
+  );
+}
+
+async function ProjectFiler({ projectId }: { projectId: string }) {
+  const initialAttachments = await listAttachments("project", projectId);
+  return (
+    <AttachmentSection
+      scope="project"
+      parentId={projectId}
+      initialAttachments={initialAttachments as any}
+      bare
+    />
   );
 }

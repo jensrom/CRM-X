@@ -384,18 +384,15 @@ export async function emailQuote(quoteId: string, formData: FormData) {
 
   if (!to || !subject) throw new Error("Modtager og emne paakraevet");
 
-  // Simpel HTML-body. En egentlig template-engine kommer i naeste fase.
+  // Branded HTML template med tenant-logo og accent-farve
   const ref = `${quote.tenant.quotePrefix ?? "Q"}-${String(quote.number).padStart(4, "0")}`;
-  const html = `
-    <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 600px; color:#222;">
-      <p>${escapeHtml(message).replace(/\n/g, "<br/>")}</p>
-      <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
-      <p style="font-size:12px; color:#888;">
-        Tilbud ${ref} fra ${escapeHtml(quote.tenant.name)} til ${escapeHtml(quote.company.name)}
-      </p>
-    </div>
-  `;
-  const text = `${message}\n\n—\nTilbud ${ref} fra ${quote.tenant.name} til ${quote.company.name}`;
+  const { genericBranded, getBrandingForTenant } = await import("@/lib/email/templates");
+  const branding = await getBrandingForTenant(tenantId);
+  const { html, text } = genericBranded({
+    ...branding,
+    title:   `Tilbud ${ref}`,
+    message,
+  });
 
   const result = await sendMail({
     via, tenantId, userId,
@@ -459,7 +456,12 @@ export async function convertQuoteToInvoice(id: string) {
 
   const quote = await db.quote.findFirst({
     where: { id, tenantId },
-    include: { lines: { orderBy: { sortOrder: "asc" } } },
+    include: {
+      lines: {
+        orderBy: { sortOrder: "asc" },
+        include: { product: { select: { id: true, name: true, pricingMode: true } } },
+      },
+    },
   });
   if (!quote) throw new Error("Tilbud ikke fundet");
   if (quote.status !== "accepted") {
@@ -468,6 +470,12 @@ export async function convertQuoteToInvoice(id: string) {
   if (quote.convertedToInvoiceId) {
     redirect(`/invoices/${quote.convertedToInvoiceId}`);
   }
+
+  // Identificer klippekort-linjer (per_hour_bundle) — opretter automatisk
+  // HourBundle paa kunden saa konsulenter kan trække timer fra det
+  const bundleLines = quote.lines.filter(
+    (l: any) => l.product?.pricingMode === "per_hour_bundle" && l.seats && l.seats > 0,
+  );
 
   // Næste faktura-nummer
   const lastInv = await db.invoice.findFirst({
@@ -519,10 +527,40 @@ export async function convertQuoteToInvoice(id: string) {
       },
     });
 
+    // Auto-opret HourBundle for hver klippekort-linje paa tilbuddet
+    if (bundleLines.length > 0) {
+      const lastBundle = await tx.hourBundle.findFirst({
+        where: { tenantId },
+        orderBy: { number: "desc" },
+        select: { number: true },
+      });
+      let nextNumber = (lastBundle?.number ?? 0) + 1;
+
+      for (const line of bundleLines) {
+        const totalHours = line.seats ?? Number(line.quantity);
+        await tx.hourBundle.create({
+          data: {
+            tenantId,
+            companyId:    quote.companyId,
+            number:       nextNumber++,
+            name:         line.product?.name ?? "Klippekort",
+            totalHours,
+            usedMinutes:  0,
+            price:        Number(line.unitPrice) * totalHours,
+            purchaseDate: new Date(),
+            isActive:     true,
+            createdById,
+            createdByImpersonatorId,
+          },
+        });
+      }
+    }
+
     return invoice;
   });
 
   revalidatePath("/invoices");
+  revalidatePath("/klippekort");
   revalidatePath("/quotes");
   redirect(`/invoices/${result.id}`);
 }

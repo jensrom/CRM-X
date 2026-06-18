@@ -5,9 +5,10 @@ import { db } from "@/lib/db";
 import { updateMyProfile } from "@/app/actions/settings";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Settings, Shield, Users, ChevronRight, ShieldCheck, ScrollText, KeyRound, Scissors, FileText, Code2, Mail } from "lucide-react";
+import { Settings, Shield, Users, ChevronRight, ShieldCheck, ScrollText, KeyRound, Scissors, FileText, Code2, Mail, CreditCard } from "lucide-react";
 import Link from "next/link";
 import { LanguageSelector } from "@/components/settings/LanguageSelector";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import { normalizeLocale } from "@/lib/i18n";
 
 export default async function SettingsPage() {
@@ -74,6 +75,11 @@ export default async function SettingsPage() {
             <LanguageSelector
               currentLocale={normalizeLocale((user as any)?.language)}
             />
+          </div>
+
+          {/* Tema-vælger */}
+          <div className="mt-6">
+            <ThemeToggle initial={((user as any)?.theme as any) ?? "system"} />
           </div>
         </div>
 
@@ -186,6 +192,20 @@ export default async function SettingsPage() {
               <div>
                 <p className="text-sm font-medium group-hover:text-primary transition-colors">Email</p>
                 <p className="text-xs text-muted-foreground">Kobl din mailbox + system-mail-konfiguration</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+
+          <Link href="/settings/billing"
+            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                <CreditCard className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium group-hover:text-primary transition-colors">Billing & abonnement</p>
+                <p className="text-xs text-muted-foreground">Plan, betaling, kvitteringer</p>
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />

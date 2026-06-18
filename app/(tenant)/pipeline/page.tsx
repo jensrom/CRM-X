@@ -35,9 +35,14 @@ export default async function PipelinePage() {
         title="Sales Pipeline"
         description={`${deals.length} deals i alt`}
         actions={
-          <a href="/pipeline/new">
-            <Button size="md"><Plus className="h-4 w-4" />Opret deal</Button>
-          </a>
+          <div className="flex items-center gap-2">
+            <a href="/api/pipeline/export" download className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-secondary/40 transition-colors">
+              CSV-eksport
+            </a>
+            <a href="/pipeline/new">
+              <Button size="md"><Plus className="h-4 w-4" />Opret deal</Button>
+            </a>
+          </div>
         }
       />
 

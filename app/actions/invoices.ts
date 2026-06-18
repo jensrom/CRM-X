@@ -49,16 +49,13 @@ export async function emailInvoice(invoiceId: string, formData: FormData) {
   if (!to || !subject) throw new Error("Modtager og emne paakraevet");
 
   const ref = `${invoice.tenant.invoicePrefix ?? "F"}-${String(invoice.number).padStart(4, "0")}`;
-  const html = `
-    <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 600px; color:#222;">
-      <p>${escapeHtml(message).replace(/\n/g, "<br/>")}</p>
-      <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
-      <p style="font-size:12px; color:#888;">
-        Faktura ${ref} fra ${escapeHtml(invoice.tenant.name)} til ${escapeHtml(invoice.company.name)}
-      </p>
-    </div>
-  `;
-  const text = `${message}\n\n—\nFaktura ${ref} fra ${invoice.tenant.name} til ${invoice.company.name}`;
+  const { genericBranded, getBrandingForTenant } = await import("@/lib/email/templates");
+  const branding = await getBrandingForTenant(tenantId);
+  const { html, text } = genericBranded({
+    ...branding,
+    title:   `Faktura ${ref}`,
+    message,
+  });
 
   const result = await sendMail({
     via, tenantId, userId,

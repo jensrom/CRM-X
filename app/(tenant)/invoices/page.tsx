@@ -2,7 +2,7 @@ import { getInvoices } from "@/app/actions/invoices";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
-import { FileText, Plus, Building2, FolderKanban, CalendarDays } from "lucide-react";
+import { FileText, Plus, Building2, FolderKanban, CalendarDays, Download } from "lucide-react";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
@@ -48,12 +48,18 @@ export default async function InvoicesPage() {
         title="Fakturaer"
         description={`${invoices.length} fakturaer — ${formatCurrency(openValue)} udestående`}
         actions={
-          <a href="/invoices/new">
-            <Button size="md">
-              <Plus className="h-4 w-4" />
-              Ny faktura
-            </Button>
-          </a>
+          <div className="flex items-center gap-2">
+            <a href="/api/invoices/export" download className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-secondary/40 transition-colors">
+              <Download className="h-3.5 w-3.5" />
+              CSV-eksport
+            </a>
+            <a href="/invoices/new">
+              <Button size="md">
+                <Plus className="h-4 w-4" />
+                Ny faktura
+              </Button>
+            </a>
+          </div>
         }
       />
 

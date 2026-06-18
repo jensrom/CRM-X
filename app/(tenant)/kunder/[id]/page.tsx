@@ -22,6 +22,8 @@ import {
   InvoicePreviewBody, ProjectPreviewBody, TicketPreviewBody,
   BundlePreviewBody, QuotePreviewBody,
 } from "@/components/companies/TabPreviews";
+import { AttachmentSection } from "@/components/attachments/AttachmentSection";
+import { listAttachments } from "@/app/actions/attachments";
 
 export default async function CompanyDetailPage({
   params, searchParams,
@@ -69,8 +71,22 @@ export default async function CompanyDetailPage({
       {tab === "klippekort" && <KlippekortTab company={company} />}
       {tab === "tilbud"     && <TilbudTab company={company} />}
       {tab === "fakturaer"  && <FakturaerTab company={company} />}
-      {tab === "aktivitet"  && <AktivitetTab company={company} />}
+      {tab === "aktivitet"  && <AktivitetFeedTab companyId={company.id} />}
+      {tab === "filer"      && <FilerTab companyId={company.id} />}
     </>
+  );
+}
+
+async function FilerTab({ companyId }: { companyId: string }) {
+  const initialAttachments = await listAttachments("company", companyId);
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <AttachmentSection
+        scope="company"
+        parentId={companyId}
+        initialAttachments={initialAttachments as any}
+      />
+    </div>
   );
 }
 
@@ -610,24 +626,95 @@ function FakturaerTab({ company }: { company: any }) {
   );
 }
 
-function AktivitetTab({ company }: { company: any }) {
-  if (company.activities.length === 0) return <EmptyState icon={ActivityIcon} title="Ingen aktivitet" description="Møder, opkald, e-mails og noter på kunden vises her." />;
+async function AktivitetFeedTab({ companyId }: { companyId: string }) {
+  const { getActivityFeed } = await import("@/app/actions/activity-feed");
+  const feed = await getActivityFeed(companyId, 100);
+
+  if (feed.length === 0) {
+    return (
+      <EmptyState
+        icon={ActivityIcon}
+        title="Ingen aktivitet endnu"
+        description="Tilbud, fakturaer, mails, projekter og noter dukker op her som timeline."
+      />
+    );
+  }
+
+  const ICONS: Record<string, any> = {
+    activity:         ActivityIcon,
+    quote_created:    FileSignature,
+    quote_sent:       FileSignature,
+    quote_accepted:   CheckCircle2,
+    quote_converted:  Receipt,
+    invoice_created:  Receipt,
+    invoice_sent:     Receipt,
+    invoice_paid:     CheckCircle2,
+    ticket_created:   TicketIcon,
+    ticket_resolved:  CheckCircle2,
+    ticket_closed:    CheckCircle2,
+    project_created:  FolderKanban,
+    email_sent:       Receipt,
+    bundle_created:   Scissors,
+    deal_won:         CheckCircle2,
+    deal_lost:        XCircle,
+  };
+
+  const TONES: Record<string, string> = {
+    activity:        "bg-secondary text-muted-foreground",
+    quote_created:   "bg-violet-500/10 text-violet-700",
+    quote_sent:      "bg-violet-500/15 text-violet-700",
+    quote_accepted:  "bg-emerald-500/10 text-emerald-700",
+    quote_converted: "bg-emerald-500/10 text-emerald-700",
+    invoice_created: "bg-blue-500/10 text-blue-700",
+    invoice_sent:    "bg-blue-500/15 text-blue-700",
+    invoice_paid:    "bg-emerald-500/10 text-emerald-700",
+    ticket_created:  "bg-rose-500/10 text-rose-700",
+    ticket_resolved: "bg-emerald-500/10 text-emerald-700",
+    ticket_closed:   "bg-slate-500/10 text-slate-700",
+    project_created: "bg-amber-500/10 text-amber-700",
+    email_sent:      "bg-blue-500/10 text-blue-700",
+    bundle_created:  "bg-rose-500/10 text-rose-700",
+    deal_won:        "bg-emerald-500/15 text-emerald-700",
+    deal_lost:       "bg-slate-500/10 text-slate-700",
+  };
+
   return (
-    <Section title={`Aktivitetslog (${company.activities.length})`} icon={ActivityIcon}>
-      <ul className="divide-y divide-border bg-card rounded-xl border border-border">
-        {company.activities.map((a: any) => (
-          <li key={a.id} className="px-4 py-3">
-            <div className="flex items-start gap-3">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-1" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{a.subject}</p>
-                {a.description && <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{a.description}</p>}
-                <p className="text-[11px] text-muted-foreground mt-1">{a.type} &middot; {a.user?.name ?? "-"} &middot; {formatDate(a.createdAt)}</p>
+    <Section title={`Aktivitetslog (${feed.length})`} icon={ActivityIcon}>
+      <ol className="relative space-y-3">
+        {feed.map((e: any, idx: number) => {
+          const Icon = ICONS[e.type] ?? ActivityIcon;
+          const tone = TONES[e.type] ?? "bg-secondary text-muted-foreground";
+          const Item = e.href ? Link : "div";
+          const itemProps = e.href ? { href: e.href } : {};
+          return (
+            <li key={e.id} className="flex gap-3">
+              <div className="flex flex-col items-center shrink-0">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${tone}`}>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                {idx < feed.length - 1 && <div className="w-px flex-1 bg-border min-h-[12px] mt-1" />}
               </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+              <Item
+                {...(itemProps as any)}
+                className={`flex-1 bg-card border border-border rounded-xl p-3 ${e.href ? "hover:border-primary/30 transition-colors block" : ""}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium leading-snug">{e.title}</p>
+                  <p className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                    {formatDate(e.occurredAt)}
+                  </p>
+                </div>
+                {e.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{e.description}</p>
+                )}
+                {e.actorName && (
+                  <p className="text-[10px] text-muted-foreground mt-1">af {e.actorName}</p>
+                )}
+              </Item>
+            </li>
+          );
+        })}
+      </ol>
     </Section>
   );
 }

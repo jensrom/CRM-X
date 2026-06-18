@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { AppTopbar } from "@/components/layout/AppTopbar";
 import { getDashboardData } from "@/app/actions/dashboard";
+import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import {
   Building2, Ticket, TrendingUp, Timer, AlertTriangle, CheckCircle2,
   Clock, ArrowUpRight, FolderKanban, Key, Package, Users, Scissors
@@ -113,6 +114,26 @@ export default async function DashboardPage() {
 
   const activeProjects = d.projectsByStatus["active"] ?? 0;
   const totalTickets = Object.values(d.ticketMap).reduce((a, b) => a + b, 0);
+
+  // Tom-tilstand: ingen kunder, ingen tickets, ingen aktive deals → vis welcome+CTA
+  const isEmpty =
+    d.companiesCount === 0 &&
+    totalTickets === 0 &&
+    d.activeDealCount === 0;
+
+  if (isEmpty) {
+    const tenantName = session?.user?.tenantName ?? undefined;
+    return (
+      <>
+        <AppTopbar pageTitle="Dashboard" />
+        <EmptyDashboard
+          userName={name}
+          tenantName={tenantName as any}
+          modules={modules}
+        />
+      </>
+    );
+  }
 
   return (
     <>

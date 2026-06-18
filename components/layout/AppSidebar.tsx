@@ -163,9 +163,8 @@ export function AppSidebar({
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen flex flex-col z-30"
+      className="h-screen flex flex-col w-full relative"
       style={{
-        width: "var(--sidebar-width)",
         background: "hsl(var(--sidebar-bg))",
         borderRight: "1px solid hsl(var(--sidebar-border))",
       }}

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  FileSignature, ChevronRight, Trash2, Plus, Send, CheckCircle2, XCircle, Receipt, Calendar,
+  FileSignature, ChevronRight, Trash2, Plus, Send, CheckCircle2, XCircle, Receipt, Calendar, Download,
 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { BackButton } from "@/components/shared/BackButton";
@@ -214,6 +214,19 @@ export default async function QuoteDetailPage({
                   </Link>
                 </div>
               )}
+            </div>
+
+            {/* Download PDF — altid synlig */}
+            <div className="pt-3 border-t border-border">
+              <a
+                href={`/api/quotes/${id}/pdf`}
+                download
+                className="w-full inline-flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border border-border hover:bg-secondary/40 transition-colors"
+                title="Download tilbud som PDF — vedhæft i din mail"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
+              </a>
             </div>
 
             {/* Status-handlinger */}

@@ -15,6 +15,8 @@ import { auth } from "@/lib/auth";
 import { BackButton } from "@/components/shared/BackButton";
 import { QrCode } from "@/components/shared/QrCode";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
+import { AttachmentSection } from "@/components/attachments/AttachmentSection";
+import { listAttachments } from "@/app/actions/attachments";
 
 const STATUS_FLOW = [
   { value: "open",             label: "Åben"                 },
@@ -297,7 +299,28 @@ export default async function TicketDetailPage({
             <LogTimeForm ticketId={ticket.id} today={today} />
           </div>
         </div>
+
+        {/* Filer-sektion */}
+        <div className="mt-4 bg-card rounded-xl border border-border p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Filer</h2>
+          </div>
+          <TicketFiler ticketId={ticket.id} />
+        </div>
       </div>
     </>
+  );
+}
+
+async function TicketFiler({ ticketId }: { ticketId: string }) {
+  const initialAttachments = await listAttachments("ticket", ticketId);
+  return (
+    <AttachmentSection
+      scope="ticket"
+      parentId={ticketId}
+      initialAttachments={initialAttachments as any}
+      bare
+    />
   );
 }

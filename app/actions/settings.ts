@@ -282,6 +282,18 @@ export async function updateMyLanguage(language: string): Promise<void> {
   revalidatePath("/dashboard");
 }
 
+/** Opdater brugerens tema (light/dark/system) */
+export async function updateMyTheme(theme: string): Promise<void> {
+  const session = await getSession();
+  const ALLOWED = new Set(["light", "dark", "system"]);
+  const normalized = ALLOWED.has(theme) ? theme : "system";
+
+  await db.user.update({
+    where: { id: session.user.id! },
+    data: { theme: normalized } as any,
+  });
+}
+
 // Faktura-konfiguration (tenant-niveau)
 export async function updateInvoiceConfig(formData: FormData) {
   const session = await getSession();

@@ -3,9 +3,15 @@ import { auth } from "@/lib/auth";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { GlobalCheckIn } from "@/components/layout/GlobalCheckIn";
+import {
+  MobileSidebarProvider,
+  MobileMenuButton,
+  ResponsiveSidebar,
+} from "@/components/layout/MobileSidebarShell";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { getMyNotifications, getUnreadCount } from "@/app/actions/notifications";
 import { getMyCheckIn, getProjects } from "@/app/actions/projects";
-import { Search } from "lucide-react";
+import { GlobalSearch } from "@/components/layout/GlobalSearch";
 
 // Alle tenant-pages er dynamiske — læser session + DB pr. request.
 // Forhindrer Next.js i at prøve at prerender ved build-time (fejler uden DB).
@@ -49,61 +55,67 @@ export default async function TenantLayout({ children, modal }: { children: Reac
     tenant: { projectPrefix: p.tenant.projectPrefix },
   }));
 
+  const userTheme = ((session.user as any).theme as "light" | "dark" | "system" | undefined) ?? "system";
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sidebar */}
-      <AppSidebar
-        modules={modules || []}
-        userName={name || "Bruger"}
-        userEmail={email || ""}
-        userRole={role || "user"}
-        permissions={permissions || {}}
-        locale={userLanguage as any}
-      />
+    <ThemeProvider initialTheme={userTheme}>
+    <MobileSidebarProvider>
+      <div className="min-h-screen bg-background">
+        {/* Sidebar — wrapped i ResponsiveSidebar saa den drawer'er paa mobile */}
+        <ResponsiveSidebar>
+          <AppSidebar
+            modules={modules || []}
+            userName={name || "Bruger"}
+            userEmail={email || ""}
+            userRole={role || "user"}
+            permissions={permissions || {}}
+            locale={userLanguage as any}
+          />
+        </ResponsiveSidebar>
 
-      {/* Main content area */}
-      <div
-        className="flex flex-col min-h-screen"
-        style={{ marginLeft: "var(--sidebar-width)" }}
-      >
-        {/* Topbar (fixed) */}
-        <header
-          className="fixed top-0 right-0 bg-card border-b border-border flex items-center justify-between px-6 z-20"
-          style={{ left: "var(--sidebar-width)", height: "var(--topbar-height)" }}
+        {/* Main content area — fuld bredde paa mobile, marginLeft paa md+ */}
+        <div
+          className="flex flex-col min-h-screen md:ml-[var(--sidebar-width)]"
         >
-          {/* Page title placeholder — sider injicerer via AppTopbar */}
-          <div id="topbar-title" className="text-base font-semibold text-foreground" />
+          {/* Topbar (fixed) */}
+          <header
+            className="fixed top-0 right-0 left-0 md:left-[var(--sidebar-width)] bg-card border-b border-border flex items-center justify-between px-3 md:px-6 z-20"
+            style={{ height: "var(--topbar-height)" }}
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              {/* Hamburger — kun mobile */}
+              <MobileMenuButton />
 
-          <div className="flex items-center gap-2">
-            {/* Global check-in widget — synlig på alle sider */}
-            {(modules?.includes("projects") || activeCheckIn) && (
-              <GlobalCheckIn activeCheckIn={activeCheckIn} projects={checkInProjects} />
-            )}
+              {/* Page title placeholder — sider injicerer via AppTopbar */}
+              <div id="topbar-title" className="text-base font-semibold text-foreground truncate" />
+            </div>
 
-            {/* Søg */}
-            <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-secondary/50 text-muted-foreground text-sm hover:bg-secondary transition-colors">
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">Søg...</span>
-              <kbd className="hidden sm:inline text-[10px] px-1.5 py-0.5 rounded bg-muted border border-border font-mono">
-                K
-              </kbd>
-            </button>
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+              {/* Global check-in widget — synlig på alle sider */}
+              {(modules?.includes("projects") || activeCheckIn) && (
+                <GlobalCheckIn activeCheckIn={activeCheckIn} projects={checkInProjects} />
+              )}
 
-            {/* Notifikationsklokke med live data */}
-            <NotificationBell
-              initialNotifications={notifications as any}
-              initialUnread={unreadCount}
-            />
-          </div>
-        </header>
+              {/* Globalsøg — ⌘K aabner modal */}
+              <GlobalSearch />
 
-        {/* Topbar height reservation */}
-        <div style={{ height: "var(--topbar-height)" }} className="shrink-0" />
+              {/* Notifikationsklokke med live data */}
+              <NotificationBell
+                initialNotifications={notifications as any}
+                initialUnread={unreadCount}
+              />
+            </div>
+          </header>
 
-        {/* Main */}
-        <main className="flex-1 p-6 animate-in">{children}</main>
+          {/* Topbar height reservation */}
+          <div style={{ height: "var(--topbar-height)" }} className="shrink-0" />
+
+          {/* Main */}
+          <main className="flex-1 p-3 sm:p-4 md:p-6 animate-in">{children}</main>
+        </div>
+        {modal}
       </div>
-      {modal}
-    </div>
+    </MobileSidebarProvider>
+    </ThemeProvider>
   );
 }
