@@ -280,6 +280,11 @@ model User {
   timezone   String?  // IANA, fx "Europe/Copenhagen" — null = arve fra tenant
   theme      String?  // "light" | "dark" | "system" — null = "system"
   qrPreference String? @default("hidden") // hidden | visible — global QR-præference
+  // --- Personlig iCal-feed ─────────────────────────────────────
+  // Tokenet er en del af URLen brugeren tilfoejer i Google/Outlook/Apple Cal.
+  // Reset = generer nyt token = den gamle URL holder op med at virke.
+  calendarToken      String?  @unique
+  calendarTokenIssuedAt DateTime?
   // --- MFA (TOTP — RFC 6238) ---
   // Compliance: ISO 27001 A.8.5, SOC 2 CC6.1, GDPR Art. 32
   mfaEnabled       Boolean  @default(false)

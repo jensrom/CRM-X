@@ -294,6 +294,33 @@ export async function updateMyTheme(theme: string): Promise<void> {
   });
 }
 
+/**
+ * Generer (eller regenerer) calendar-token til personlig iCal-feed.
+ * Reset = invaliderer den gamle URL omgaaende.
+ */
+export async function regenerateCalendarToken(): Promise<void> {
+  const session = await getSession();
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  const token = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  await db.user.update({
+    where: { id: session.user.id! },
+    data: { calendarToken: token, calendarTokenIssuedAt: new Date() } as any,
+  });
+  revalidatePath("/settings/calendar");
+}
+
+/** Slet calendar-token. */
+export async function revokeCalendarToken(): Promise<void> {
+  const session = await getSession();
+  await db.user.update({
+    where: { id: session.user.id! },
+    data: { calendarToken: null, calendarTokenIssuedAt: null } as any,
+  });
+  revalidatePath("/settings/calendar");
+}
+
 // Faktura-konfiguration (tenant-niveau)
 export async function updateInvoiceConfig(formData: FormData) {
   const session = await getSession();

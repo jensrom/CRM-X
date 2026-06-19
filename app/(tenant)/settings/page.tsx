@@ -197,6 +197,20 @@ export default async function SettingsPage() {
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
 
+          <Link href="/settings/calendar"
+            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-sky-500/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-sky-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium group-hover:text-primary transition-colors">Kalender-feed</p>
+                <p className="text-xs text-muted-foreground">Abonnér på dine deadlines i Google/Outlook/Apple Calendar</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+
           <Link href="/settings/billing"
             className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
             <div className="flex items-center gap-3">
