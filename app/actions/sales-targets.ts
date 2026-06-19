@@ -13,8 +13,8 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { periodBounds, type PeriodType } from "@/lib/sales-periods";
 
-type PeriodType = "month" | "quarter" | "year";
 type TargetType = "revenue" | "won_deals";
 
 async function getSession() {
@@ -23,34 +23,8 @@ async function getSession() {
   return session;
 }
 
-/** Returnerer foerste/sidste dag i den periode der indeholder `now`. */
-export function periodBounds(
-  type: PeriodType,
-  now: Date = new Date(),
-): { start: Date; end: Date; label: string } {
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  if (type === "month") {
-    const start = new Date(Date.UTC(y, m, 1));
-    const end = new Date(Date.UTC(y, m + 1, 0));
-    const label = start.toLocaleDateString("da-DK", {
-      month: "long",
-      year: "numeric",
-    });
-    return { start, end, label };
-  }
-  if (type === "quarter") {
-    const qStart = Math.floor(m / 3) * 3;
-    const start = new Date(Date.UTC(y, qStart, 1));
-    const end = new Date(Date.UTC(y, qStart + 3, 0));
-    const qNum = Math.floor(qStart / 3) + 1;
-    return { start, end, label: `Q${qNum} ${y}` };
-  }
-  // year
-  const start = new Date(Date.UTC(y, 0, 1));
-  const end = new Date(Date.UTC(y, 11, 31));
-  return { start, end, label: `${y}` };
-}
+// periodBounds + PeriodType er flyttet til lib/sales-periods.ts (kan ikke vaere
+// non-async export i "use server"-fil).
 
 /** Liste over alle maal for tenant (admin-view). */
 export async function listSalesTargets(

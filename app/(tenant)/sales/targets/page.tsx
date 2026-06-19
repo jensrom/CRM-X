@@ -7,10 +7,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import {
   listTargetsWithProgress,
   getCurrentLeaderboard,
-  periodBounds,
   upsertSalesTarget,
   deleteSalesTarget,
 } from "@/app/actions/sales-targets";
+import { periodBounds } from "@/lib/sales-periods";
 import { Target, Trophy, TrendingUp, Users, Plus } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 

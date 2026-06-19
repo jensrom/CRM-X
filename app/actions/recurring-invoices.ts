@@ -39,8 +39,9 @@ async function getSession() {
 /**
  * Beregn naeste nextRunAt baseret paa current + interval.
  * Bevarer dayOfMonth saa fakturaer kommer paa samme dag hver maaned.
+ * Intern helper — kan ikke vaere exported i "use server"-fil.
  */
-export function calcNextRunAt(
+function calcNextRunAt(
   current: Date,
   intervalType: IntervalType,
   dayOfMonth: number,
