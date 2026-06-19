@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronRight,
   Scissors,
+  Repeat,
 } from "lucide-react";
 import { useState } from "react";
 import { getInitials } from "@/lib/utils";
@@ -83,6 +84,7 @@ const NAV_SECTIONS: {
       { i18nKey: "nav.pipeline", label: "Pipeline",  href: "/pipeline",         icon: KanbanSquare },
       { i18nKey: "nav.quotes", label: "Tilbud",    href: "/quotes",           icon: FileText     },
       { i18nKey: "nav.invoices", label: "Fakturaer", href: "/invoices",         icon: FileText     },
+      { i18nKey: "nav.recurring", label: "Faste fakturaer", href: "/invoices/recurring", icon: Repeat },
       { i18nKey: "nav.targets", label: "Salgs-mål", href: "/sales/targets",   icon: Target       },
       { i18nKey: "nav.pricing", label: "Priser",    href: "/products/pricing", icon: Tag          },
     ],
