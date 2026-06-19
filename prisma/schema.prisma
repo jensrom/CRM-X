@@ -160,6 +160,7 @@ model Tenant {
   salesTargets     SalesTarget[]
   recurringInvoices RecurringInvoice[]
   comments         Comment[]
+  slaPolicies      SlaPolicy[]
 
   @@map("tenants")
 }
@@ -547,6 +548,14 @@ model Ticket {
   priority     String   @default("normal")
   resolvedAt   DateTime?
   closedAt     DateTime?
+  // --- SLA-tracking ─────────────────────────────────────────────
+  // Beregnes ved create + ved priority-skift via lib/sla.ts
+  // firstResponseAt saettes naar foerste eksterne komment (eller status-skift) lander.
+  firstResponseAt    DateTime?
+  slaResponseDueAt   DateTime?
+  slaResolveDueAt    DateTime?
+  slaResponseBreached Boolean  @default(false)
+  slaResolveBreached  Boolean  @default(false)
   // Sporbarhed: hvem oprettede ressourcen
   // Hvis oprettet via super-admin impersonation: createdByImpersonatorId
   // peger paa super_admin'en, mens createdById peger paa tenant-brugeren
@@ -1418,14 +1427,30 @@ model Comment {
   author  User?    @relation("CommentAuthor", fields: [authorId], references: [id])
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
-  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId, companyId, createdAt])
-  @@index([tenantId, projectId, createdAt])
-  @@index([tenantId, dealId, createdAt])
-  @@index([tenantId, quoteId, createdAt])
-  @@index([tenantId, invoiceId, createdAt])
-  @@map("comments")
+// ============================================================
+// SLA POLICY — service level agreements pr. ticket-prioritet
+// ============================================================
+// Pr. tenant: én række pr. priority. Tider er i minutter.
+// responseTimeMin: maks tid mellem ticket-create og foerste svar
+// resolveTimeMin:  maks tid mellem ticket-create og lukning
+//
+// Disable: hvis isActive=false bliver ingen SLA paa tickets med
+// denne priority — fx for low-prio-tickets uden kontrakt-binding.
+model SlaPolicy {
+  id              String   @id @default(cuid())
+  tenantId        String
+  priority        String   // "low" | "normal" | "high" | "critical"
+  responseTimeMin Int      // minutter til foerste svar
+  resolveTimeMin  Int      // minutter til endelig loesning
+  isActive        Boolean  @default(true)
+  // Forbereder: warning-procent. 80 = warning naar 80% af tiden er gaaet.
+  warningPct      Int      @default(80)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, priority])
+  @@map("sla_policies")
 }

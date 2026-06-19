@@ -207,6 +207,22 @@ export async function addComment(formData: FormData) {
     },
   });
 
+  // SLA: marker første agent-svar hvis ikke allerede sat (kun ekstern komment tæller)
+  if (!isInternal) {
+    try {
+      const t: any = await db.ticket.findUnique({
+        where: { id: ticketId },
+        select: { firstResponseAt: true, tenantId: true } as any,
+      });
+      if (t && !t.firstResponseAt && t.tenantId === session.user.tenantId) {
+        await db.ticket.update({
+          where: { id: ticketId },
+          data: { firstResponseAt: new Date() } as any,
+        });
+      }
+    } catch {}
+  }
+
   revalidatePath(`/support/tickets/${ticketId}`);
   redirect(`/support/tickets/${ticketId}`);
 }

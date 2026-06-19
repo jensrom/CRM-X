@@ -211,6 +211,20 @@ export default async function SettingsPage() {
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
 
+          <Link href="/settings/sla"
+            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <Mail className="h-4 w-4 text-rose-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium group-hover:text-primary transition-colors">SLA-politik</p>
+                <p className="text-xs text-muted-foreground">Responstid + løsningstid pr. ticket-prioritet</p>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Link>
+
           <Link href="/settings/billing"
             className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
             <div className="flex items-center gap-3">

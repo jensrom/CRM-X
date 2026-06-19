@@ -7,6 +7,8 @@ import { getMyCurrentTarget } from "@/app/actions/sales-targets";
 import { MyTargetWidget } from "@/components/dashboard/MyTargetWidget";
 import { getAtRiskCompanies } from "@/app/actions/health-score";
 import { AtRiskCustomersWidget } from "@/components/dashboard/AtRiskCustomersWidget";
+import { getAtRiskTickets } from "@/app/actions/sla";
+import { SlaAtRiskWidget } from "@/components/dashboard/SlaAtRiskWidget";
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import {
   Building2, Ticket, TrendingUp, Timer, AlertTriangle, CheckCircle2,
@@ -116,6 +118,7 @@ export default async function DashboardPage() {
   const d = await getDashboardData();
   const myTarget = await getMyCurrentTarget().catch(() => null);
   const atRiskCompanies = await getAtRiskCompanies(5).catch(() => []);
+  const atRiskTickets = await getAtRiskTickets(5).catch(() => []);
   if (!d) return null;
 
   const activeProjects = d.projectsByStatus["active"] ?? 0;
@@ -191,6 +194,11 @@ export default async function DashboardPage() {
         {/* Kunder i risiko — kun synlig hvis health-scores er beregnet */}
         {atRiskCompanies.length > 0 && (
           <AtRiskCustomersWidget rows={atRiskCompanies as any} />
+        )}
+
+        {/* SLA i fare */}
+        {atRiskTickets.length > 0 && (
+          <SlaAtRiskWidget rows={atRiskTickets as any} />
         )}
 
         {/* KPI */}
