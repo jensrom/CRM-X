@@ -28,6 +28,8 @@ import { QrCode } from "@/components/shared/QrCode";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { AttachmentSection } from "@/components/attachments/AttachmentSection";
 import { listAttachments } from "@/app/actions/attachments";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { listComments } from "@/app/actions/comments";
 
 function formatDur(min: number) {
   const h = Math.floor(min / 60);
@@ -491,6 +493,15 @@ export default async function ProjectDetailPage({
           </div>
           <ProjectFiler projectId={project.id} />
         </div>
+
+        {/* Kommentarer */}
+        <div className="bg-card border border-border rounded-xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">Kommentarer</h2>
+          </div>
+          <ProjectComments projectId={project.id} />
+        </div>
       </div>
     </>
   );
@@ -503,6 +514,18 @@ async function ProjectFiler({ projectId }: { projectId: string }) {
       scope="project"
       parentId={projectId}
       initialAttachments={initialAttachments as any}
+      bare
+    />
+  );
+}
+
+async function ProjectComments({ projectId }: { projectId: string }) {
+  const initial = await listComments("project", projectId);
+  return (
+    <CommentThread
+      scope="project"
+      parentId={projectId}
+      initialComments={initial as any}
       bare
     />
   );

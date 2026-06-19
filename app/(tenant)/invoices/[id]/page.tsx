@@ -383,7 +383,21 @@ export default async function InvoiceDetailPage({
             </form>
           </div>
         </div>
+
+        {/* Kommentarer */}
+        <InvoiceCommentsSection invoiceId={invoice.id} />
       </div>
     </>
+  );
+}
+
+async function InvoiceCommentsSection({ invoiceId }: { invoiceId: string }) {
+  const { listComments } = await import("@/app/actions/comments");
+  const { CommentThread } = await import("@/components/comments/CommentThread");
+  const initial = await listComments("invoice", invoiceId);
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 mt-5">
+      <CommentThread scope="invoice" parentId={invoiceId} initialComments={initial as any} />
+    </div>
   );
 }

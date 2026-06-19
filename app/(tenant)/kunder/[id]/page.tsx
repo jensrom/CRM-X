@@ -24,6 +24,8 @@ import {
 } from "@/components/companies/TabPreviews";
 import { AttachmentSection } from "@/components/attachments/AttachmentSection";
 import { listAttachments } from "@/app/actions/attachments";
+import { CommentThread } from "@/components/comments/CommentThread";
+import { listComments } from "@/app/actions/comments";
 import { HealthBadge } from "@/components/companies/HealthBadge";
 import { recalcCompanyHealth } from "@/app/actions/health-score";
 import { RefreshCw } from "lucide-react";
@@ -76,7 +78,21 @@ export default async function CompanyDetailPage({
       {tab === "fakturaer"  && <FakturaerTab company={company} />}
       {tab === "aktivitet"  && <AktivitetFeedTab companyId={company.id} />}
       {tab === "filer"      && <FilerTab companyId={company.id} />}
+      {tab === "kommentarer" && <KommentarerTab companyId={company.id} />}
     </>
+  );
+}
+
+async function KommentarerTab({ companyId }: { companyId: string }) {
+  const initial = await listComments("company", companyId);
+  return (
+    <div className="bg-card border border-border rounded-xl p-5">
+      <CommentThread
+        scope="company"
+        parentId={companyId}
+        initialComments={initial as any}
+      />
+    </div>
   );
 }
 

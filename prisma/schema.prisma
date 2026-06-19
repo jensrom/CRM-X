@@ -159,6 +159,7 @@ model Tenant {
   attachments      Attachment[]
   salesTargets     SalesTarget[]
   recurringInvoices RecurringInvoice[]
+  comments         Comment[]
 
   @@map("tenants")
 }
@@ -318,6 +319,7 @@ model User {
   emailLogs       EmailLog[]
   attachments     Attachment[]    @relation("AttachmentUploader")
   salesTargets    SalesTarget[]   @relation("SalesTargetOwner")
+  comments        Comment[]       @relation("CommentAuthor")
 
   @@unique([tenantId, email])
   @@map("users")
@@ -390,6 +392,7 @@ model Company {
   attachments      Attachment[]
   healthSnapshots  CompanyHealthSnapshot[]
   recurringInvoices RecurringInvoice[]
+  comments         Comment[]
 
   @@map("companies")
 }
@@ -689,6 +692,7 @@ model Project {
   projectBundles ProjectBundle[]
   invoices       Invoice[]
   attachments    Attachment[]
+  comments       Comment[]
 
   @@unique([tenantId, number])
   @@map("projects")
@@ -822,6 +826,7 @@ model Deal {
   invoices   Invoice[]     // Fakturaer genereret fra dette deal
   quotes     Quote[]       // Tilbud genereret fra dette deal
   stageHistory DealStageHistory[] // Append-only log af stage-transitions
+  comments     Comment[]
 
   @@index([tenantId, stage])
   @@index([tenantId, expectedCloseDate])
@@ -1045,6 +1050,7 @@ model Invoice {
   project Project?      @relation(fields: [projectId], references: [id])
   deal    Deal?         @relation(fields: [dealId], references: [id])
   lines   InvoiceLine[]
+  comments  Comment[]
 
   @@unique([tenantId, number])
   @@map("invoices")
@@ -1119,6 +1125,7 @@ model Quote {
   company Company     @relation(fields: [companyId], references: [id])
   deal    Deal?       @relation(fields: [dealId], references: [id])
   lines   QuoteLine[]
+  comments Comment[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status])
@@ -1369,4 +1376,48 @@ model RecurringInvoice {
   @@index([tenantId, status, nextRunAt])
   @@index([tenantId, companyId])
   @@map("recurring_invoices")
+}
+
+// ============================================================
+// COMMENT — polymorf kommunikations-tråd
+// ============================================================
+// Hver kunde/projekt/deal/quote/invoice kan have en delt komment-tråd.
+// Tickets har deres egen TicketComment (legacy + isInternal-flag).
+//
+// Présis én af parent-FKs skal vaere sat (haandhaeves i action).
+// edited-felter giver mulighed for at vise "redigeret"-label i UI.
+model Comment {
+  id            String   @id @default(cuid())
+  tenantId      String
+  authorId      String?
+  // Polymorf parent — én af disse er sat
+  companyId     String?
+  projectId     String?
+  dealId        String?
+  quoteId       String?
+  invoiceId     String?
+  // Indhold
+  body          String   @db.Text
+  // Synlighed: "team" (default) | "private" (kun forfatter) | "external" (kunden ser den, fremtidig brug)
+  visibility    String   @default("team")
+  // Redigering
+  editedAt      DateTime?
+  // Sporbarhed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  author  User?    @relation("CommentAuthor", fields: [authorId], references: [id])
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([tenantId, projectId, createdAt])
+  @@index([tenantId, dealId, createdAt])
+  @@index([tenantId, quoteId, createdAt])
+  @@index([tenantId, invoiceId, createdAt])
+  @@map("comments")
 }

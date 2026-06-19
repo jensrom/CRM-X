@@ -20,6 +20,7 @@ import {
   Receipt,
   Activity,
   Paperclip,
+  MessageCircle,
 } from "lucide-react";
 
 export type CompanyTabKey =
@@ -32,7 +33,8 @@ export type CompanyTabKey =
   | "tilbud"
   | "fakturaer"
   | "aktivitet"
-  | "filer";
+  | "filer"
+  | "kommentarer";
 
 interface TabDef {
   key: CompanyTabKey;
@@ -52,6 +54,7 @@ interface Props {
     fakturaer: number;
     aktivitet: number;
     filer?: number;
+    kommentarer?: number;
   };
   basePath?: string;
 }
@@ -74,6 +77,7 @@ export function CompanyTabBar({ counts, basePath }: Props) {
     { key: "fakturaer",  label: "Fakturaer",  icon: Receipt,      count: counts.fakturaer },
     { key: "aktivitet",  label: "Aktivitet",  icon: Activity,     count: counts.aktivitet },
     { key: "filer",      label: "Filer",      icon: Paperclip,    count: counts.filer ?? 0 },
+    { key: "kommentarer", label: "Kommentarer", icon: MessageCircle, count: counts.kommentarer ?? 0 },
   ];
 
   return (

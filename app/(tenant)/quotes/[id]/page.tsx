@@ -460,8 +460,22 @@ export default async function QuoteDetailPage({
               <p className="text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
             </div>
           )}
+
+          {/* Kommentarer */}
+          <QuoteCommentsSection quoteId={quote.id} />
         </div>
       </div>
     </>
+  );
+}
+
+async function QuoteCommentsSection({ quoteId }: { quoteId: string }) {
+  const { listComments } = await import("@/app/actions/comments");
+  const { CommentThread } = await import("@/components/comments/CommentThread");
+  const initial = await listComments("quote", quoteId);
+  return (
+    <div className="bg-card border border-border rounded-xl p-4">
+      <CommentThread scope="quote" parentId={quoteId} initialComments={initial as any} />
+    </div>
   );
 }

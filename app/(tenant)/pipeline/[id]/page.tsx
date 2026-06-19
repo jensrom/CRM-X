@@ -295,7 +295,21 @@ export default async function DealDetailPage({
             )}
           </div>
         </div>
+
+        {/* Kommentarer */}
+        <DealCommentsSection dealId={deal.id} />
       </div>
     </>
+  );
+}
+
+async function DealCommentsSection({ dealId }: { dealId: string }) {
+  const { listComments } = await import("@/app/actions/comments");
+  const { CommentThread } = await import("@/components/comments/CommentThread");
+  const initial = await listComments("deal", dealId);
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 mt-5">
+      <CommentThread scope="deal" parentId={dealId} initialComments={initial as any} />
+    </div>
   );
 }
