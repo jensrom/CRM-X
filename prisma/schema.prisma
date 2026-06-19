@@ -1321,7 +1321,16 @@ model SalesTarget {
   notes        String?  @db.Text
   createdById  String?
   createdAt    DateTime @default(now())
-  updatedAt    
+  updatedAt    DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation("SalesTargetOwner", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId, periodStart, targetType])
+  @@index([tenantId, periodStart])
+  @@map("sales_targets")
+}
+
 // ============================================================
 // COMPANY HEALTH SNAPSHOT — trend-historik for health score
 // ============================================================
@@ -1427,6 +1436,17 @@ model Comment {
   author  User?    @relation("CommentAuthor", fields: [authorId], references: [id])
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  invoice Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, companyId, createdAt])
+  @@index([tenantId, projectId, createdAt])
+  @@index([tenantId, dealId, createdAt])
+  @@index([tenantId, quoteId, createdAt])
+  @@index([tenantId, invoiceId, createdAt])
+  @@map("comments")
+}
 
 // ============================================================
 // SLA POLICY — service level agreements pr. ticket-prioritet
