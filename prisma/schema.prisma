@@ -1405,6 +1405,9 @@ model Comment {
   body          String   @db.Text
   // Synlighed: "team" (default) | "private" (kun forfatter) | "external" (kunden ser den, fremtidig brug)
   visibility    String   @default("team")
+  // @-mentions — gemmer User-IDs naar nogen skriver @navn
+  // Brug array istedet for separat junction-tabel: lavt write-volume, hurtigt read.
+  mentionedUserIds String[] @default([])
   // Redigering
   editedAt      DateTime?
   // Sporbarhed

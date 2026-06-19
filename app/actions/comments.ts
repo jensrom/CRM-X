@@ -10,6 +10,7 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { extractMentionedUserIds, bodyToPlain } from "@/lib/mentions";
 
 export type CommentScope = "company" | "project" | "deal" | "quote" | "invoice";
 
@@ -99,7 +100,23 @@ export async function addComment(
 
   await verifyParent(tenantId, scope, parentId);
 
-  const data: any = { tenantId, authorId, body };
+  // Parse @-mentions
+  const mentionedIds = extractMentionedUserIds(body);
+  // Validere at de naevnte brugere tilhoerer samme tenant
+  let validMentions: { id: string; name: string }[] = [];
+  if (mentionedIds.length > 0) {
+    validMentions = await db.user.findMany({
+      where: { id: { in: mentionedIds }, tenantId },
+      select: { id: true, name: true },
+    });
+  }
+
+  const data: any = {
+    tenantId,
+    authorId,
+    body,
+    mentionedUserIds: validMentions.map((u) => u.id),
+  };
   if (scope === "company") data.companyId = parentId;
   else if (scope === "project") data.projectId = parentId;
   else if (scope === "deal") data.dealId = parentId;
@@ -107,6 +124,33 @@ export async function addComment(
   else if (scope === "invoice") data.invoiceId = parentId;
 
   await db.comment.create({ data });
+
+  // Notify mentioned users (undtaget forfatter)
+  if (validMentions.length > 0) {
+    const authorName = session.user.name ?? "En kollega";
+    const linkPath =
+      scope === "company" ? `/kunder/${parentId}` :
+      scope === "project" ? `/projects/${parentId}` :
+      scope === "deal"    ? `/pipeline/${parentId}` :
+      scope === "quote"   ? `/quotes/${parentId}` :
+                            `/invoices/${parentId}`;
+    const preview = bodyToPlain(body).slice(0, 160);
+
+    await db.notification.createMany({
+      data: validMentions
+        .filter((u) => u.id !== authorId)
+        .map((u) => ({
+          tenantId,
+          userId: u.id,
+          type: "mention",
+          title: `${authorName} nævnte dig`,
+          message: preview,
+          linkUrl: linkPath,
+          isRead: false,
+        })),
+    });
+  }
+
   revalidateScope(scope, parentId);
 }
 
@@ -125,9 +169,18 @@ export async function editComment(commentId: string, body: string) {
   });
   if (!c) throw new Error("Kommentar ikke fundet eller ikke din");
 
+  // Re-parse mentions ved redigering (ny notifikation hvis nye)
+  const newMentioned = extractMentionedUserIds(trimmed);
+  const validMentions = newMentioned.length > 0
+    ? await db.user.findMany({
+        where: { id: { in: newMentioned }, tenantId },
+        select: { id: true },
+      }).then((u) => u.map((x) => x.id))
+    : [];
+
   await db.comment.update({
     where: { id: commentId },
-    data: { body: trimmed, editedAt: new Date() },
+    data: { body: trimmed, editedAt: new Date(), mentionedUserIds: validMentions } as any,
   });
 
   if (c.companyId) revalidatePath(`/kunder/${c.companyId}`);

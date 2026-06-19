@@ -7,7 +7,7 @@
  * Cmd/Ctrl+Enter sender. Hver bruger kan redigere/slette egne.
  */
 
-import { useState, useTransition, useRef, useEffect } from "react";
+import { useState, useTransition, useRef, useEffect, type ReactNode } from "react";
 import { Send, Edit3, Trash2, X, Check, MessageCircle } from "lucide-react";
 import {
   addComment,
@@ -15,6 +15,8 @@ import {
   deleteComment,
   type CommentScope,
 } from "@/app/actions/comments";
+import { MentionTextarea } from "@/components/comments/MentionTextarea";
+import { splitBody } from "@/lib/mentions";
 
 interface Comment {
   id: string;
@@ -42,6 +44,23 @@ function initials(name: string): string {
     .slice(0, 2)
     .map((s) => s[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+/** Renderer comment-body som JSX hvor @-tags vises som chips. */
+function renderBody(body: string): React.ReactNode {
+  const segments = splitBody(body);
+  return segments.map((seg, i) => {
+    if (seg.type === "text") return <span key={i}>{seg.value}</span>;
+    return (
+      <span
+        key={i}
+        title={`Nævnt: ${seg.name}`}
+        className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-medium mx-0.5 align-baseline"
+      >
+        @{seg.name}
+      </span>
+    );
+  });
 }
 
 function timeAgo(d: Date | string): string {
@@ -149,14 +168,12 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
 
       {/* Ny kommentar */}
       <form action={handleAdd} className="space-y-2">
-        <textarea
-          ref={textareaRef}
+        <MentionTextarea
           name="body"
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={setBody}
+          placeholder="Skriv en kommentar… brug @ til at nævne en kollega. (⌘+Enter sender)"
           rows={3}
-          placeholder="Skriv en kommentar… (⌘+Enter for at sende)"
-          className="w-full px-3 py-2 border border-border rounded-lg bg-card text-sm resize-y focus:outline-none focus:ring-2 focus:ring-ring"
           maxLength={5000}
         />
         <div className="flex items-center justify-between">
@@ -224,11 +241,10 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
                   </div>
                   {isEditing ? (
                     <div className="space-y-2">
-                      <textarea
+                      <MentionTextarea
                         value={editBody}
-                        onChange={(e) => setEditBody(e.target.value)}
+                        onChange={setEditBody}
                         rows={3}
-                        className="w-full px-3 py-2 border border-border rounded-lg bg-card text-sm"
                       />
                       <div className="flex justify-end gap-1">
                         <button
@@ -248,7 +264,9 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm whitespace-pre-wrap break-words">{c.body}</p>
+                    <p className="text-sm whitespace-pre-wrap break-words">
+                      {renderBody(c.body)}
+                    </p>
                   )}
                 </div>
               </div>
