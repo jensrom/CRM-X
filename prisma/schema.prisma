@@ -1474,3 +1474,47 @@ model SlaPolicy {
   @@unique([tenantId, priority])
   @@map("sla_policies")
 }
+
+// ============================================================
+// AI-ASSISTANT THREADS — persistent samtale-historik pr. bruger
+// ============================================================
+// Hver bruger kan have flere samtale-traade. Brugeren kan vende tilbage
+// til en gammel traad og fortsaette samtalen, eller skifte mellem traade.
+//
+// title genereres automatisk fra foerste besked, men kan renames manuelt.
+// pinned = traaden vises oeverst i sidebaren.
+model AssistantThread {
+  id        String   @id @default(cuid())
+  tenantId  String?  // null = super-admin scope (admin-portal)
+  userId    String?  // null = super-admin (SuperAdmin-tabel, har ikke FK her)
+  // Identitet for super-admins der ikke har User-row
+  ownerEmail String  // altid sat — bruges som lookup-key for thread-ownership
+  ownerKind  String  @default("user") // "user" | "super_admin"
+  title     String   @default("Ny samtale")
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AssistantMessage[]
+
+  @@index([ownerEmail, ownerKind, updatedAt])
+  @@index([tenantId, updatedAt])
+  @@map("assistant_threads")
+}
+
+model AssistantMessage {
+  id         String   @id @default(cuid())
+  threadId   String
+  role       String   // "user" | "assistant"
+  text       String   @db.Text
+  // Gemt parseret intent + reply hvis assistant-besked
+  intentJson Json?
+  // Klassificering: success/error/info/help — bruges af UI
+  variant    String?  // null | "success" | "error" | "info" | "help"
+  createdAt  DateTime @default(now())
+
+  thread AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@map("assistant_messages")
+}

@@ -2,21 +2,53 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AssistantPanel } from "@/components/assistant/AssistantPanel";
 import { Sparkles, AlertTriangle } from "lucide-react";
+import {
+  listMyThreads,
+  getThread,
+} from "@/app/actions/assistant-threads";
 
 export const dynamic = "force-dynamic";
 
 /**
- * /admin/assistant — Super-admin AI-assistent.
+ * /admin/assistant — Super-admin AI-assistent med threads.
  *
- * Bemærk: Assistenten er tenant-scoped — den arbejder kun mod den tenant
- * super-adminen aktuelt er impersoneret som. Hvis ingen impersonation aktiv,
- * vises en advarsel.
+ * URL-param `?t=<threadId>` aabner en specifik tråd.
  */
-export default async function AdminAssistantPage() {
+export default async function AdminAssistantPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ t?: string }>;
+}) {
   const session = await auth();
   if (session?.user?.role !== "super_admin") redirect("/login");
 
+  const sp = (await (searchParams ?? Promise.resolve({}))) as { t?: string };
   const hasTenantContext = !!session.user.tenantId;
+
+  const threads = await listMyThreads();
+
+  // Bestem aktiv tråd: ?t= eller seneste eller null
+  let activeId: string | null = sp.t ?? null;
+  if (!activeId && threads.length > 0) {
+    activeId = threads[0].id;
+  }
+
+  // Load messages for aktiv tråd
+  let initialMessages: any[] = [];
+  if (activeId) {
+    const thread = await getThread(activeId);
+    if (thread) {
+      initialMessages = thread.messages.map((m) => ({
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        text: m.text,
+        variant: m.variant ?? "info",
+        createdAt: m.createdAt,
+      }));
+    } else {
+      activeId = null;
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -31,6 +63,7 @@ export default async function AdminAssistantPage() {
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             Chat-baseret hjælper der kan svare på data-spørgsmål og udføre actions.
+            Alle samtaler gemmes — du kan vende tilbage senere.
           </p>
         </div>
       </div>
@@ -41,45 +74,18 @@ export default async function AdminAssistantPage() {
           <div className="text-sm text-amber-900 dark:text-amber-200">
             <p className="font-semibold">Ingen tenant-kontekst aktiv</p>
             <p className="text-xs mt-1">
-              For at bruge assistenten skal du først starte en impersonation-session på en kunde.
+              For at assistenten kan udføre actions og hente data, skal du først starte en impersonation-session på en kunde.
               Gå til <strong>Alle kunder</strong>, vælg en kunde, og tryk "Log ind som tenant-admin".
             </p>
           </div>
         </div>
       )}
 
-      <AssistantPanel />
-
-      {/* Eksempel-bibliotek */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold mb-3">Eksempler på hvad jeg forstår</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              📊 Opslag
-            </p>
-            <ul className="space-y-1 text-foreground/80">
-              <li><code className="bg-secondary px-1 rounded">vis pipeline</code></li>
-              <li><code className="bg-secondary px-1 rounded">vis åbne tickets</code></li>
-              <li><code className="bg-secondary px-1 rounded">vis leads</code></li>
-              <li><code className="bg-secondary px-1 rounded">vis lead Pia</code></li>
-              <li><code className="bg-secondary px-1 rounded">vis kunde Aalborg</code></li>
-              <li><code className="bg-secondary px-1 rounded">status på T-0011</code></li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-              ⚡ Actions (kræver godkendelse)
-            </p>
-            <ul className="space-y-1 text-foreground/80">
-              <li><code className="bg-secondary px-1 rounded">skift lead Pia til kvalificeret</code></li>
-              <li><code className="bg-secondary px-1 rounded">skift deal Hosting-flytning til vundet</code></li>
-              <li><code className="bg-secondary px-1 rounded">luk T-0011 til løst</code></li>
-              <li><code className="bg-secondary px-1 rounded">genberegn health for Skagen Beauty</code></li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <AssistantPanel
+        initialThreads={threads as any}
+        initialActiveThreadId={activeId}
+        initialMessages={initialMessages}
+      />
     </div>
   );
 }
