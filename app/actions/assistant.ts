@@ -106,7 +106,6 @@ async function executeAction(action: AssistantAction): Promise<AssistantReply> {
           where: { id: lead.id },
           data: {
             status: nextStatus,
-            ...(nextStatus === "converted" && { convertedAt: new Date() }),
           },
         });
         revalidatePath("/leads");
@@ -273,7 +272,7 @@ async function executeAction(action: AssistantAction): Promise<AssistantReply> {
         const oldStatus = lead.status;
         await db.lead.update({
           where: { id: lead.id },
-          data: { status: action.newStatus, ...(action.newStatus === "converted" && { convertedAt: new Date() }) },
+          data: { status: action.newStatus },
         });
         revalidatePath("/leads");
         return {
@@ -396,10 +395,13 @@ async function executeAction(action: AssistantAction): Promise<AssistantReply> {
       }
     }
   } catch (e: any) {
+    // Log fuld fejl server-side, men skjul Prisma-detaljer for brugeren
+    console.error("[assistant.executeAction] failed:", e);
+    const safeMsg = "Kunne ikke gennemføre handlingen. Prøv igen eller kontakt support hvis problemet fortsætter.";
     return {
       ok: false,
-      intent: { type: "error", message: e?.message ?? "Ukendt fejl" },
-      error: e?.message ?? "Ukendt fejl",
+      intent: { type: "error", message: safeMsg },
+      error: safeMsg,
     };
   }
 }
@@ -930,10 +932,12 @@ async function executeLookup(lookup: AssistantLookup): Promise<AssistantReply> {
       }
     }
   } catch (e: any) {
+    console.error("[assistant.executeLookup] failed:", e);
+    const safeMsg = "Kunne ikke hente data. Prøv igen eller kontakt support hvis problemet fortsætter.";
     return {
       ok: false,
-      intent: { type: "error", message: e?.message ?? "Lookup fejlede" },
-      error: e?.message ?? "Lookup fejlede",
+      intent: { type: "error", message: safeMsg },
+      error: safeMsg,
     };
   }
 }
