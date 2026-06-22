@@ -248,7 +248,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
                   <input name="email" type="email" required placeholder="Email"
                     className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                   <div className="grid grid-cols-2 gap-2">
-                    <input name="password" type="password" placeholder="Password (tom = CrmX2024!)"
+                    <input name="password" type="password" placeholder="Password (tom = Velkommen2026!)"
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                     <select name="roleId"
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">

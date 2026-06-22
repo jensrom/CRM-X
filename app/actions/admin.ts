@@ -225,7 +225,9 @@ export async function createTenantUser(formData: FormData) {
     throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const password = (formData.get("password") as string) || "CrmX2024!";
+  // Default skal opfylde PASSWORD_POLICY (min 12 tegn + 3 karakterklasser).
+  // "CrmX2024!" var 9 tegn og fejlede policy-tjekket → Server-error.
+  const password = (formData.get("password") as string) || "Velkommen2026!";
 
   // Håndhæv password-policy også for første-gangs-password
   const pwCheck = checkPassword(password, { email: parsed.data.email, name: parsed.data.name });
