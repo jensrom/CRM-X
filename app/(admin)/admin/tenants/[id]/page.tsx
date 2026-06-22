@@ -17,8 +17,19 @@ const MODULES = [
   { key: "licenses",  label: "Licenser",  desc: "Licensstyring" },
 ];
 
-export default async function TenantDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TenantDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ userError?: string; userCreated?: string; onboarded?: string }>;
+}) {
   const { id } = await params;
+  const sp = (await (searchParams ?? Promise.resolve({}))) as {
+    userError?: string;
+    userCreated?: string;
+    onboarded?: string;
+  };
   const session = await auth();
   if (session?.user?.role !== "super_admin") redirect("/login");
 
@@ -27,6 +38,32 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
   return (
     <div className="space-y-6">
+      {/* Toast-bar: success / fejl fra recent action */}
+      {sp.userCreated && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-start gap-3">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-emerald-900 dark:text-emerald-200">
+            Brugeren <strong>{sp.userCreated}</strong> er oprettet og kan logge ind nu.
+          </p>
+        </div>
+      )}
+      {sp.userError && (
+        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800 rounded-xl px-4 py-3 flex items-start gap-3">
+          <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
+              Kunne ikke oprette bruger
+            </p>
+            <p className="text-xs text-rose-800 dark:text-rose-300 mt-0.5 break-words">
+              {sp.userError}
+            </p>
+            <p className="text-xs text-rose-700/80 dark:text-rose-300/80 mt-1">
+              Password skal være mindst 12 tegn og indeholde mindst 3 af: små bogstaver, store bogstaver, tal, symbol.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Breadcrumb + actions */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 text-sm">
@@ -240,7 +277,10 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
 
               {/* Opret ny bruger */}
               <div className="border-t border-border pt-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Opret bruger</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Opret bruger</p>
+                  <p className="text-[10px] text-muted-foreground">Min 12 tegn · 3 af 4 klasser</p>
+                </div>
                 <form action={createTenantUser} className="space-y-2">
                   <input type="hidden" name="tenantId" value={tenant.id} />
                   <input name="name" required placeholder="Navn"

@@ -215,22 +215,41 @@ export async function updateTenant(formData: FormData) {
 export async function createTenantUser(formData: FormData) {
   const session = await requireSuperAdmin();
 
+  const tenantId = (formData.get("tenantId") as string) || "";
+
+  /**
+   * Hjælper: redirect med pæn fejlbesked i stedet for at throw.
+   * Throw'er en Server Components-fejl → "Noget gik galt" — frustrerende for admins.
+   */
+  const failWith = (msg: string) => {
+    if (tenantId) {
+      redirect(
+        `/admin/tenants/${tenantId}?userError=${encodeURIComponent(msg)}`,
+      );
+    }
+    redirect("/admin/tenants?error=" + encodeURIComponent(msg));
+  };
+
   const parsed = userCreateSchema.safeParse({
-    tenantId: formData.get("tenantId"),
+    tenantId,
     name: formData.get("name"),
     email: formData.get("email"),
     roleId: (formData.get("roleId") as string) || null,
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
+    failWith(parsed.error.issues.map((i) => i.message).join(", "));
+    return; // unreachable — failWith redirects
   }
 
   // Default skal opfylde PASSWORD_POLICY (min 12 tegn + 3 karakterklasser).
-  // "CrmX2024!" var 9 tegn og fejlede policy-tjekket → Server-error.
-  const password = (formData.get("password") as string) || "Velkommen2026!";
+  const password =
+    (formData.get("password") as string) || "Velkommen2026!";
 
   // Håndhæv password-policy også for første-gangs-password
-  const pwCheck = checkPassword(password, { email: parsed.data.email, name: parsed.data.name });
+  const pwCheck = checkPassword(password, {
+    email: parsed.data.email,
+    name: parsed.data.name,
+  });
   if (!pwCheck.ok) {
     await audit({
       action: "create",
@@ -239,34 +258,65 @@ export async function createTenantUser(formData: FormData) {
       outcome: "failure",
       message: `Password policy: ${pwCheck.errors.join("; ")}`,
     });
-    throw new Error(pwCheck.errors.join(", "));
+    failWith("Password: " + pwCheck.errors.join(", "));
+    return;
+  }
+
+  // Tjek email-dublet i samme tenant — ellers throw fra Prisma unique constraint
+  const existing = await db.user.findFirst({
+    where: { tenantId: parsed.data.tenantId, email: parsed.data.email },
+    select: { id: true },
+  }).catch(() => null);
+  if (existing) {
+    failWith(`En bruger med email "${parsed.data.email}" findes allerede.`);
+    return;
   }
 
   const hashed = await bcrypt.hash(password, PASSWORD_POLICY.bcryptCost);
 
-  const user = await db.user.create({
-    data: {
-      tenantId: parsed.data.tenantId,
-      name: parsed.data.name,
-      email: parsed.data.email,
-      password: hashed,
-      roleId: parsed.data.roleId,
-      isActive: true,
-      passwordChangedAt: new Date(),
-    } as any,
-  });
+  let user;
+  try {
+    user = await db.user.create({
+      data: {
+        tenantId: parsed.data.tenantId,
+        name: parsed.data.name,
+        email: parsed.data.email,
+        password: hashed,
+        roleId: parsed.data.roleId,
+        isActive: true,
+        passwordChangedAt: new Date(),
+      } as any,
+    });
+  } catch (e: any) {
+    await audit({
+      action: "create",
+      resourceType: "user",
+      tenantIdOverride: parsed.data.tenantId,
+      outcome: "failure",
+      message: `DB-fejl: ${e?.message ?? String(e)}`,
+    }).catch(() => {});
+    failWith(`Kunne ikke oprette bruger: ${e?.message ?? "ukendt fejl"}`);
+    return;
+  }
 
   await audit({
     action: "create",
     resourceType: "user",
     resourceId: user.id,
     tenantIdOverride: parsed.data.tenantId,
-    after: redact({ name: user.name, email: user.email, roleId: user.roleId, isActive: user.isActive }),
+    after: redact({
+      name: user.name,
+      email: user.email,
+      roleId: user.roleId,
+      isActive: user.isActive,
+    }),
     message: "User created by super admin",
-  });
+  }).catch(() => {});
 
   revalidatePath(`/admin/tenants/${parsed.data.tenantId}`);
-  redirect(`/admin/tenants/${parsed.data.tenantId}`);
+  redirect(
+    `/admin/tenants/${parsed.data.tenantId}?userCreated=${encodeURIComponent(user.email)}`,
+  );
 }
 
 // Deaktiver/aktiver bruger
