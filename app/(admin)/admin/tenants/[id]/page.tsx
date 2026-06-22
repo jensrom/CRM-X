@@ -285,4 +285,41 @@ export default async function TenantDetailPage({
                   <input type="hidden" name="tenantId" value={tenant.id} />
                   <input name="name" required placeholder="Navn"
                     className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                  <input name="email" type="email" required placeholder="E
+                  <input name="email" type="email" required placeholder="Email"
+                    className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input name="password" type="password" placeholder="Password (tom = Velkommen2026!)"
+                      className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <select name="roleId"
+                      className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      <option value="">Ingen rolle</option>
+                      {tenant.roles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button type="submit"
+                    className="w-full py-2 rounded-lg border border-dashed border-primary/40 text-sm text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
+                    <Plus className="h-3.5 w-3.5" />
+                    Opret bruger
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Lifecycle-panel (suspend / scheduled_deletion / purge) */}
+        <TenantLifecyclePanel
+          tenantId={tenant.id}
+          tenantName={tenant.name}
+          tenantSlug={tenant.slug}
+          status={(tenant as any).status}
+          trialEndsAt={(tenant as any).trialEndsAt}
+          suspendedAt={(tenant as any).suspendedAt}
+          scheduledDeletionAt={(tenant as any).scheduledDeletionAt}
+        />
+      </div>
+    </div>
+  );
+}
