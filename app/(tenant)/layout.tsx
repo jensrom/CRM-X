@@ -9,6 +9,7 @@ import {
   ResponsiveSidebar,
 } from "@/components/layout/MobileSidebarShell";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { ToastProvider } from "@/components/ui/Toast";
 import { getMyNotifications, getUnreadCount } from "@/app/actions/notifications";
 import { getMyCheckIn, getProjects } from "@/app/actions/projects";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
@@ -59,6 +60,7 @@ export default async function TenantLayout({ children, modal }: { children: Reac
 
   return (
     <ThemeProvider initialTheme={userTheme}>
+    <ToastProvider>
     <MobileSidebarProvider>
       <div className="min-h-screen bg-background">
         {/* Sidebar — wrapped i ResponsiveSidebar saa den drawer'er paa mobile */}
@@ -116,6 +118,7 @@ export default async function TenantLayout({ children, modal }: { children: Reac
         {modal}
       </div>
     </MobileSidebarProvider>
+    </ToastProvider>
     </ThemeProvider>
   );
 }

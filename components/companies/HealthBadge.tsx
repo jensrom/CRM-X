@@ -32,6 +32,20 @@ function iconFor(level: HealthBreakdown["level"]) {
 
 export function HealthBadge({ score, signals, size = "md" }: Props) {
   if (score == null) {
+    // For size="lg" — vis pænt call-to-action kort i stedet for lille chip
+    if (size === "lg") {
+      return (
+        <div className="rounded-xl border border-dashed border-border p-4 bg-secondary/20">
+          <div className="flex items-center gap-2 mb-1">
+            <Heart className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-semibold text-muted-foreground">Helbreds-score</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Ikke beregnet endnu. Tryk <strong>Genberegn</strong> nedenfor for at få en score.
+          </p>
+        </div>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-secondary/40 text-muted-foreground">
         — Ikke beregnet

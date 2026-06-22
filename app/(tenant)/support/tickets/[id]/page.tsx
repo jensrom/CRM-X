@@ -17,6 +17,10 @@ import { QrCode } from "@/components/shared/QrCode";
 import { CreatorBadge } from "@/components/shared/CreatorBadge";
 import { AttachmentSection } from "@/components/attachments/AttachmentSection";
 import { listAttachments } from "@/app/actions/attachments";
+import { SlaBadge } from "@/components/sla/SlaBadge";
+import { getSlaStatus } from "@/lib/sla";
+import { db } from "@/lib/db";
+import { SiblingNav } from "@/components/shared/SiblingNav";
 
 const STATUS_FLOW = [
   { value: "open",             label: "Åben"                 },
@@ -43,6 +47,33 @@ export default async function TicketDetailPage({
   const status = TICKET_STATUS[ticket.status as keyof typeof TICKET_STATUS];
   const priority = TICKET_PRIORITY[ticket.priority as keyof typeof TICKET_PRIORITY];
 
+  // Hent SLA-policy + beregn status hvis tenant har konfigureret SLA
+  const slaPolicy = await db.slaPolicy.findFirst({
+    where: { tenantId: ticket.tenantId, priority: ticket.priority, isActive: true },
+  }).catch(() => null);
+  const slaResult = slaPolicy
+    ? getSlaStatus(
+        {
+          createdAt: ticket.createdAt,
+          firstResponseAt: (ticket as any).firstResponseAt,
+          resolvedAt: ticket.resolvedAt,
+          status: ticket.status,
+          priority: ticket.priority,
+        },
+        slaPolicy as any,
+      )
+    : null;
+
+  // SiblingNav: alle åbne tickets i samme tenant (rækkefoelge: nyeste foerst)
+  const siblingIds = await db.ticket.findMany({
+    where: {
+      tenantId: ticket.tenantId,
+      status: { in: ["open", "pending_customer", "pending_supplier"] },
+    },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+  }).then((rows) => rows.map((r) => r.id)).catch(() => [ticket.id]);
+
   const totalMinutes = ticket.timeLogs.reduce((sum, t) => sum + t.durationMin, 0);
   const billableMinutes = ticket.timeLogs
     .filter((t) => t.isBillable)
@@ -61,7 +92,16 @@ export default async function TicketDetailPage({
       <AppTopbar pageTitle={`${formatRef(ticket.tenant.ticketPrefix, ticket.number)} ${ticket.title}`} />
 
 
-      <BackButton href={backHref} />
+      <div className="flex items-center justify-between mb-5">
+        <BackButton href={backHref} />
+        <SiblingNav
+          ids={siblingIds}
+          currentId={ticket.id}
+          hrefPattern="/support/tickets/{id}"
+          prevLabel="Forrige"
+          nextLabel="Næste"
+        />
+      </div>
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-5">
         <Link href="/support/tickets" className="hover:text-foreground transition-colors">
@@ -95,10 +135,17 @@ export default async function TicketDetailPage({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
               <Badge variant={status?.color as any}>{status?.label}</Badge>
               <Badge variant={priority?.color as any}>{priority?.label}</Badge>
+              {slaResult && <SlaBadge result={slaResult} size="md" />}
             </div>
+
+            {slaResult && slaResult.worst !== "n/a" && (
+              <div className="mb-4">
+                <SlaBadge result={slaResult} size="lg" />
+              </div>
+            )}
 
             <div className="space-y-2.5">
               {ticket.company && (

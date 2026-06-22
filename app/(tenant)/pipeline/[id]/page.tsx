@@ -294,10 +294,10 @@ export default async function DealDetailPage({
               </div>
             )}
           </div>
-        </div>
 
-        {/* Kommentarer */}
-        <DealCommentsSection dealId={deal.id} />
+          {/* Kommentarer — fuld-bredde i højre kolonne for at give plads til typing */}
+          <DealCommentsSection dealId={deal.id} />
+        </div>
       </div>
     </>
   );
@@ -308,7 +308,7 @@ async function DealCommentsSection({ dealId }: { dealId: string }) {
   const { CommentThread } = await import("@/components/comments/CommentThread");
   const initial = await listComments("deal", dealId);
   return (
-    <div className="bg-card border border-border rounded-xl p-5 mt-5">
+    <div className="bg-card border border-border rounded-xl p-5">
       <CommentThread scope="deal" parentId={dealId} initialComments={initial as any} />
     </div>
   );

@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/comments";
 import { MentionTextarea } from "@/components/comments/MentionTextarea";
 import { splitBody } from "@/lib/mentions";
+import { useToast } from "@/components/ui/Toast";
 
 interface Comment {
   id: string;
@@ -84,6 +85,7 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { showToast } = useToast();
 
   // Cmd/Ctrl+Enter sender
   useEffect(() => {
@@ -120,10 +122,11 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
     startTransition(async () => {
       try {
         await addComment(scope, parentId, formData);
-        // Server-revalidatePath henter friske rows via parent-side reload —
-        // her ville ideelt være refetch, men vi ladet optimistisk vare ved.
+        showToast({ title: "Kommentar sendt", variant: "success" });
       } catch (e: any) {
-        setError(e?.message ?? "Kunne ikke sende");
+        const msg = e?.message ?? "Kunne ikke sende";
+        setError(msg);
+        showToast({ title: "Fejl", description: msg, variant: "error" });
         setComments((prev) => prev.filter((c) => c.id !== optimistic.id));
       }
     });
@@ -150,8 +153,11 @@ export function CommentThread({ scope, parentId, initialComments, bare = false }
       try {
         await deleteComment(id);
         setComments((prev) => prev.filter((c) => c.id !== id));
+        showToast({ title: "Kommentar slettet", variant: "success" });
       } catch (e: any) {
-        setError(e?.message ?? "Kunne ikke slette");
+        const msg = e?.message ?? "Kunne ikke slette";
+        setError(msg);
+        showToast({ title: "Fejl", description: msg, variant: "error" });
       }
     });
   };
