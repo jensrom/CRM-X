@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import {
   getSnapshotFunnel, getLeadConversionRate, getVelocityAnalysis, getRevenueForecast,
+  getEndToEndFunnel,
 } from "@/lib/forecast";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -19,11 +20,12 @@ export default async function ForecastDashboardPage() {
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  const [funnel, leads, velocity, revenue] = await Promise.all([
+  const [funnel, leads, velocity, revenue, endToEnd] = await Promise.all([
     getSnapshotFunnel(tenantId, twelveMonthsAgo, new Date()),
     getLeadConversionRate(tenantId, twelveMonthsAgo, new Date()),
     getVelocityAnalysis(tenantId),
     getRevenueForecast(tenantId, 6),
+    getEndToEndFunnel(tenantId, twelveMonthsAgo, new Date()),
   ]);
 
   return (
@@ -97,6 +99,86 @@ export default async function ForecastDashboardPage() {
             )}
           </ForecastSection>
         )}
+
+        {/* End-to-end funnel: Lead → Deal → Won */}
+        <ForecastSection
+          title="End-to-end konvertering — Leads → Deals → Vundet"
+          subtitle={`${endToEnd.totalLeads} leads · ${endToEnd.convertedToDeals} konverteret · ${endToEnd.wonDeals} vundet (${endToEnd.leadToWinRate.toFixed(1)}% lead-to-win)`}
+          icon={Target}
+          className="mt-4"
+        >
+          <div className="space-y-2.5">
+            {endToEnd.stages.map((s, i) => {
+              const isLast = i === endToEnd.stages.length - 1;
+              const isLeadStage = s.kind === "lead";
+              const isCrossover = i > 0 && endToEnd.stages[i - 1]?.kind !== s.kind;
+              const barColor = isLast
+                ? "bg-emerald-500"
+                : isLeadStage
+                ? "bg-blue-500"
+                : "bg-primary";
+              return (
+                <div key={s.key}>
+                  {isCrossover && (
+                    <div className="flex items-center gap-2 my-2 text-[10px] uppercase tracking-wider text-muted-foreground/60">
+                      <span className="h-px bg-border flex-1" />
+                      <span>↓ Konvertering til pipeline</span>
+                      <span className="h-px bg-border flex-1" />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm mb-1">
+                    <span className="font-medium flex items-center gap-1.5">
+                      {isLeadStage ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold">
+                          LEAD
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                          DEAL
+                        </span>
+                      )}
+                      {s.label}
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {s.count}{" "}
+                      <span className="opacity-60">
+                        · {s.pctOfTop.toFixed(1)}% af top
+                      </span>
+                    </span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${barColor}`}
+                      style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-border text-xs">
+            <div>
+              <p className="text-muted-foreground">Lead → Deal</p>
+              <p className="font-semibold tabular-nums">{endToEnd.leadToDealRate.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Deal → Vundet</p>
+              <p className="font-semibold tabular-nums">{endToEnd.dealToWinRate.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Lead → Vundet (samlet)</p>
+              <p className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                {endToEnd.leadToWinRate.toFixed(1)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">
+            Forventet revenue fra eksisterende leads:{" "}
+            <strong className="text-foreground">
+              {formatCurrency(endToEnd.estimatedRevenueFromLeads)}
+            </strong>
+          </p>
+        </ForecastSection>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
           {/* Lead-funnel sammenfatning */}

@@ -21,6 +21,9 @@ import {
   Plus,
   ScrollText,
   LogOut,
+  Sparkles,
+  Settings,
+  Users,
 } from "lucide-react";
 
 interface Props {
@@ -53,6 +56,18 @@ const NAV_SECTIONS: { section: string; items: { label: string; href: string; ico
     section: "Compliance",
     items: [
       { label: "Audit-log", href: "/admin/audit", icon: ScrollText },
+    ],
+  },
+  {
+    section: "Værktøjer",
+    items: [
+      { label: "AI-assistent", href: "/admin/assistant", icon: Sparkles },
+    ],
+  },
+  {
+    section: "Indstillinger",
+    items: [
+      { label: "Brugere", href: "/admin/settings/users", icon: Users },
     ],
   },
 ];
