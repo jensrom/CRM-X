@@ -17,19 +17,23 @@ export const dynamic = "force-dynamic";
 export default async function AdminAssistantPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ t?: string }>;
+  searchParams?: Promise<{ t?: string; new?: string }>;
 }) {
   const session = await auth();
   if (session?.user?.role !== "super_admin") redirect("/login");
 
-  const sp = (await (searchParams ?? Promise.resolve({}))) as { t?: string };
+  const sp = (await (searchParams ?? Promise.resolve({}))) as { t?: string; new?: string };
   const hasTenantContext = !!session.user.tenantId;
 
   const threads = await listMyThreads();
 
-  // Bestem aktiv tråd: ?t= eller seneste eller null
+  // Bestem aktiv tråd:
+  //   ?t=<id>  → load specifik tråd
+  //   ?new=1   → tom state (brugeren startede "Ny samtale")
+  //   ingen    → auto-vælg seneste tråd (smart default)
   let activeId: string | null = sp.t ?? null;
-  if (!activeId && threads.length > 0) {
+  const forceNew = sp.new === "1";
+  if (!activeId && !forceNew && threads.length > 0) {
     activeId = threads[0].id;
   }
 

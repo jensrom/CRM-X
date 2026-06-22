@@ -112,7 +112,10 @@ export function AssistantPanel({
     window.location.href = url;
   };
 
-  const newThread = () => switchThread(null);
+  // "Ny samtale" — server-page skal eksplicit ikke auto-vælge seneste tråd
+  const newThread = () => {
+    window.location.href = `${window.location.pathname}?new=1`;
+  };
 
   const send = (text: string) => {
     const trimmed = text.trim();
