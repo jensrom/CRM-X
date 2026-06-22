@@ -66,6 +66,7 @@ const NAV_SECTIONS: {
     section: "Overblik",         sectionKey: "nav.section.overview",
     items: [
       { i18nKey: "nav.dashboard", label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { i18nKey: "nav.assistant", label: "AI-assistent", href: "/assistant", icon: Sparkles, betaBadge: true },
     ],
   },
   {

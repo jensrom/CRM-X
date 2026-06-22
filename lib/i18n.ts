@@ -48,6 +48,7 @@ export const TRANSLATIONS: TranslationDict = {
   "nav.invoices":          { da: "Fakturaer", en: "Invoices", sv: "Fakturor", no: "Fakturaer", de: "Rechnungen" },
   "nav.recurring":         { da: "Faste fakturaer", en: "Recurring invoices", sv: "Återkommande fakturor", no: "Faste fakturaer", de: "Wiederkehrende Rechnungen" },
   "nav.targets":           { da: "Salgs-mål", en: "Sales targets", sv: "Säljmål", no: "Salgsmål", de: "Verkaufsziele" },
+  "nav.assistant":         { da: "AI-assistent", en: "AI Assistant", sv: "AI-assistent", no: "AI-assistent", de: "KI-Assistent" },
   "nav.pricing":           { da: "Priser", en: "Pricing", sv: "Priser", no: "Priser", de: "Preise" },
   "nav.campaigns":         { da: "Kampagner", en: "Campaigns", sv: "Kampanjer", no: "Kampanjer", de: "Kampagnen" },
   "nav.leads":             { da: "Leads", en: "Leads", sv: "Leads", no: "Leads", de: "Leads" },

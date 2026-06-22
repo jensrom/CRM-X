@@ -20,9 +20,12 @@ export type AssistantIntent =
 
 export type AssistantAction =
   | { kind: "lead.setStatus"; leadName: string; newStatus: string }
+  | { kind: "lead.nextStep"; leadName: string }
   | { kind: "deal.setStage"; dealTitle: string; newStage: string }
   | { kind: "ticket.setStatus"; ticketRef: string; newStatus: string }
-  | { kind: "company.recalcHealth"; companyName: string };
+  | { kind: "company.recalcHealth"; companyName: string }
+  | { kind: "timelog.add"; minutes: number; date: string; bundleRef?: string; ticketRef?: string; description?: string }
+  | { kind: "quote.send"; quoteRef: string; recipientHint?: string };
 
 export type AssistantLookup =
   | { kind: "lead.byName"; name: string }
@@ -31,7 +34,11 @@ export type AssistantLookup =
   | { kind: "company.byName"; name: string }
   | { kind: "stats.leadFunnel" }
   | { kind: "stats.pipeline" }
-  | { kind: "stats.openTickets" };
+  | { kind: "stats.openTickets" }
+  | { kind: "lookup.bestLeads"; count?: number }
+  | { kind: "lookup.dashboardSummary" }
+  | { kind: "lookup.atRiskCustomers" }
+  | { kind: "lookup.myWeek" };
 
 /**
  * Lead-status mapping. Brugeren kan skrive "kontaktet", "qualified", "konverteret" etc.
@@ -93,6 +100,105 @@ export function parseAssistantInput(input: string): AssistantIntent {
   }
   if (/(vis|hvor mange|antal).*?(åbne|aabne|aktive).*?(tickets?|sager)/i.test(text)) {
     return { type: "lookup", lookup: { kind: "stats.openTickets" }, preview: "Henter åbne tickets..." };
+  }
+
+  // SEMANTISK: "hvad er status på mine 3 bedste leads"
+  const bestLeadsMatch = text.match(
+    /(?:status\s+(?:på|paa)\s+)?(?:mine\s+|de\s+)?(\d+)?\s*(?:bedste|hotte|vigtigste|top|prioriterede)\s+leads?/i,
+  );
+  if (bestLeadsMatch) {
+    const count = bestLeadsMatch[1] ? parseInt(bestLeadsMatch[1], 10) : 3;
+    return {
+      type: "lookup",
+      lookup: { kind: "lookup.bestLeads", count: Math.min(10, Math.max(1, count)) },
+      preview: `Finder dine top ${count} leads...`,
+    };
+  }
+
+  // OPSUMMERING af site / dashboard
+  if (/(opsumm|status|overblik|hvordan ser det ud|hvordan staar det til)/i.test(text) && !/(lead|deal|ticket|kunde)/i.test(text)) {
+    return {
+      type: "lookup",
+      lookup: { kind: "lookup.dashboardSummary" },
+      preview: "Henter overordnet status...",
+    };
+  }
+
+  // RISIKO-kunder
+  if (/(risiko|i\s+fare|skal\s+vi\s+passe\s+på|churn)/i.test(text)) {
+    return {
+      type: "lookup",
+      lookup: { kind: "lookup.atRiskCustomers" },
+      preview: "Henter kunder i risiko...",
+    };
+  }
+
+  // "Min uge" / "Hvad skal jeg lave"
+  if (/(min uge|denne uge|hvad skal jeg|hvad har jeg)/i.test(text)) {
+    return {
+      type: "lookup",
+      lookup: { kind: "lookup.myWeek" },
+      preview: "Henter dine opgaver denne uge...",
+    };
+  }
+
+  // ACTION: notér tid på klippekort
+  // "Notér 2 timers arbejde fra idag på klippekort KB-0001"
+  // "Log 90 min på KB-0001"
+  // "Skriv 1.5t på klippekort KB-0001 idag"
+  const timeMatch = text.match(
+    /(?:not[eé]r|log|skriv|registr[eé]r)\s+(\d+(?:[.,]\d+)?)\s*(time?r?|t|min(?:utter)?)?\s+(?:arbejde\s+)?(?:fra\s+)?(idag|i\s*dag|igår|i\s*gaar|i\s*går)?\s*(?:på|paa)?\s*(?:klippekort\s+)?(kb[-\s]?\d+)/i,
+  );
+  if (timeMatch) {
+    const numRaw = timeMatch[1].replace(",", ".");
+    const num = parseFloat(numRaw);
+    const unit = (timeMatch[2] ?? "t").toLowerCase();
+    const isMinutes = /^min/.test(unit);
+    const minutes = isMinutes ? Math.round(num) : Math.round(num * 60);
+    const dateRaw = (timeMatch[3] ?? "idag").toLowerCase().replace(/\s+/g, "");
+    const isYesterday = /^i?g[åa]ar?$/.test(dateRaw);
+    const date = isYesterday
+      ? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+    const bundleRef = timeMatch[4].toUpperCase().replace(/\s+/g, "-");
+    return {
+      type: "action",
+      action: { kind: "timelog.add", minutes, date, bundleRef },
+      preview: `Vil notere ${minutes} min (${(minutes / 60).toFixed(1)}t) ${isYesterday ? "i går" : "i dag"} på ${bundleRef}`,
+    };
+  }
+
+  // ACTION: send tilbud
+  // "Send tilbud Q-0001 til Aalborg Tagdækning"
+  // "Afsend tilbud Q-0001"
+  const sendQuoteMatch = text.match(
+    /(?:afsend|send)\s+(?:tilbud\s+)?(q-\d+)(?:\s+til\s+(.+))?$/i,
+  );
+  if (sendQuoteMatch) {
+    const quoteRef = sendQuoteMatch[1].toUpperCase();
+    const recipientHint = sendQuoteMatch[2]?.trim();
+    return {
+      type: "action",
+      action: { kind: "quote.send", quoteRef, recipientHint },
+      preview: recipientHint
+        ? `Vil sende tilbud ${quoteRef} til "${recipientHint}"`
+        : `Vil sende tilbud ${quoteRef}`,
+    };
+  }
+
+  // ACTION: lead-next-step (uden specifik status)
+  // "Skift lead Pia til næste step"
+  // "Flyt Pia til næste"
+  const nextStepMatch = text.match(
+    /(?:skift|flyt|ryk|videre\s+med)\s+(?:lead\s+)?(.+?)\s+(?:til\s+)?(?:næste\s+step|naeste\s+step|næste|naeste|videre)$/i,
+  );
+  if (nextStepMatch) {
+    const name = nextStepMatch[1].trim();
+    return {
+      type: "action",
+      action: { kind: "lead.nextStep", leadName: name },
+      preview: `Vil rykke lead "${name}" til næste step`,
+    };
   }
 
   // ACTION: skift lead-status
@@ -217,14 +323,22 @@ const HELP_TEXT = `Jeg er din CRM-X assistent. Jeg kan:
   • "vis leads" — lead-funnel
   • "vis pipeline" — alle aktive deals
   • "vis åbne tickets" — support-overblik
-  • "vis lead [navn]" — find specifik lead
-  • "vis kunde [navn]" — kunde-detalje
+  • "vis lead [navn]" / "vis kunde [navn]"
   • "hvad er status på T-0011" — ticket-detaljer
 
-⚡ ACTIONS (skift data):
-  • "skift lead [navn] til kvalificeret"
-  • "skift deal [titel] til vundet"
-  • "luk T-0011 til løst"
-  • "genberegn health for [kunde]"
+🧠 SEMANTIK (intelligente opsummeringer):
+  • "Hvad er status på mine 3 bedste leads?" — top-leads + næste-skridt
+  • "Opsummer dagens status" — dashboard-overblik
+  • "Kunder i risiko" — health-score under 60
+  • "Hvad skal jeg lave denne uge?" — dine opgaver
 
-Skriv på dansk eller engelsk — jeg forstår begge. Hvis jeg er usikker på en handling, spørger jeg dig først.`;
+⚡ ACTIONS (skift data):
+  • "Notér 2t arbejde på klippekort KB-0001 idag"
+  • "Skift lead Pia til kvalificeret"
+  • "Flyt lead Pia til næste step"
+  • "Send tilbud Q-0001 til Aalborg Tagdækning"
+  • "Skift deal [titel] til vundet"
+  • "Luk T-0011 til løst"
+  • "Genberegn health for [kunde]"
+
+Skriv på dansk eller engelsk. Actions kræver din bekræftelse før udførelse.`;

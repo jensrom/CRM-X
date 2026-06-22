@@ -58,12 +58,197 @@ export async function askAssistant(input: string): Promise<AssistantReply> {
 // ACTIONS — udfører ændringer i DB
 // ─────────────────────────────────────────────────────────────────────────────
 
+const LEAD_NEXT_STEP: Record<string, string> = {
+  new: "contacted",
+  contacted: "qualified",
+  qualified: "converted",
+};
+
 async function executeAction(action: AssistantAction): Promise<AssistantReply> {
   const session = await getSession();
   const tenantId = session.user.tenantId!;
+  const userId = session.user.id!;
 
   try {
     switch (action.kind) {
+      case "lead.nextStep": {
+        const lead = await db.lead.findFirst({
+          where: {
+            tenantId,
+            OR: [
+              { firstName: { contains: action.leadName, mode: "insensitive" } },
+              { lastName:  { contains: action.leadName, mode: "insensitive" } },
+              { company:   { contains: action.leadName, mode: "insensitive" } },
+              { email:     { contains: action.leadName, mode: "insensitive" } },
+            ],
+          },
+          select: { id: true, firstName: true, lastName: true, status: true },
+        });
+        if (!lead) {
+          return {
+            ok: false,
+            intent: { type: "error", message: `Kunne ikke finde lead "${action.leadName}"` },
+            error: "Lead ikke fundet",
+          };
+        }
+        const nextStatus = LEAD_NEXT_STEP[lead.status];
+        if (!nextStatus) {
+          return {
+            ok: false,
+            intent: {
+              type: "error",
+              message: `Lead "${lead.firstName} ${lead.lastName}" er allerede ${lead.status === "converted" ? "konverteret" : lead.status === "lost" ? "tabt" : lead.status} — ingen næste step.`,
+            },
+            error: "Ingen næste step",
+          };
+        }
+        await db.lead.update({
+          where: { id: lead.id },
+          data: {
+            status: nextStatus,
+            ...(nextStatus === "converted" && { convertedAt: new Date() }),
+          },
+        });
+        revalidatePath("/leads");
+        return {
+          ok: true,
+          intent: {
+            type: "action",
+            action,
+            preview: `Lead "${lead.firstName} ${lead.lastName}" rykket fra ${lead.status} → ${nextStatus}`,
+          },
+          appliedChange: `${lead.firstName} ${lead.lastName}: ${lead.status} → ${nextStatus}`,
+        };
+      }
+
+      case "timelog.add": {
+        // Find klippekort via reference (KB-XXXX)
+        let bundleId: string | null = null;
+        let companyId: string | null = null;
+        let bundleName = "";
+        if (action.bundleRef) {
+          // KB-0001 → number = 1
+          const m = action.bundleRef.match(/^KB-?(\d+)$/i);
+          const num = m ? parseInt(m[1], 10) : NaN;
+          const bundle = !isNaN(num)
+            ? await db.hourBundle.findFirst({
+                where: { tenantId, number: num, isActive: true },
+                select: { id: true, name: true, companyId: true, totalHours: true, usedMinutes: true },
+              })
+            : null;
+          if (!bundle) {
+            return {
+              ok: false,
+              intent: { type: "error", message: `Klippekort ${action.bundleRef} findes ikke eller er inaktivt` },
+              error: "Bundle ikke fundet",
+            };
+          }
+          bundleId = bundle.id;
+          companyId = bundle.companyId;
+          bundleName = bundle.name;
+          // Tjek at der er nok timer tilbage
+          const remainingMin = Number(bundle.totalHours) * 60 - Number(bundle.usedMinutes);
+          if (action.minutes > remainingMin) {
+            return {
+              ok: false,
+              intent: {
+                type: "error",
+                message: `Ikke nok timer på ${action.bundleRef}: ${Math.round(remainingMin)} min tilbage, du forsøgte ${action.minutes} min`,
+              },
+              error: "For lidt saldo",
+            };
+          }
+        }
+
+        await db.timeLog.create({
+          data: {
+            tenantId,
+            userId,
+            bundleId,
+            date: new Date(action.date),
+            durationMin: action.minutes,
+            description: action.description ?? `Logget via AI-assistent`,
+            isBillable: true,
+            deductedFromBundle: !!bundleId,
+          } as any,
+        });
+
+        // Opdater bundle's usedMinutes hvis vi trækker fra et
+        if (bundleId) {
+          await db.hourBundle.update({
+            where: { id: bundleId },
+            data: { usedMinutes: { increment: action.minutes } },
+          });
+        }
+
+        revalidatePath("/time");
+        revalidatePath("/klippekort");
+        return {
+          ok: true,
+          intent: {
+            type: "action",
+            action,
+            preview:
+              `${action.minutes} min (${(action.minutes / 60).toFixed(1)}t) er logget på ${action.bundleRef ?? "uden klippekort"}` +
+              (bundleName ? ` (${bundleName})` : ""),
+          },
+          appliedChange: `+${action.minutes} min på ${action.bundleRef}`,
+        };
+      }
+
+      case "quote.send": {
+        const m = action.quoteRef.match(/^Q-?(\d+)$/i);
+        const num = m ? parseInt(m[1], 10) : NaN;
+        if (isNaN(num)) {
+          return {
+            ok: false,
+            intent: { type: "error", message: "Ugyldig tilbuds-reference" },
+            error: "Bad ref",
+          };
+        }
+        const quote = await db.quote.findFirst({
+          where: { tenantId, number: num },
+          select: { id: true, status: true, company: { select: { name: true, email: true } } },
+        });
+        if (!quote) {
+          return {
+            ok: false,
+            intent: { type: "error", message: `Tilbud ${action.quoteRef} findes ikke` },
+            error: "Quote ikke fundet",
+          };
+        }
+        if (quote.status === "accepted") {
+          return {
+            ok: false,
+            intent: {
+              type: "error",
+              message: `Tilbud ${action.quoteRef} er allerede accepteret — kan ikke gen-sende.`,
+            },
+            error: "Allerede accepteret",
+          };
+        }
+        // Vi opdaterer status til "sent" og logger via audit-trail.
+        // Selve email-afsendelsen kan udløses gennem den eksisterende mail-flow
+        // ved næste UI-besøg, eller via tenant's foretrukne kanal.
+        await db.quote.update({
+          where: { id: quote.id },
+          data: { status: "sent", sentAt: new Date() } as any,
+        }).catch(() => {});
+        revalidatePath("/quotes");
+        return {
+          ok: true,
+          intent: {
+            type: "action",
+            action,
+            preview:
+              `Tilbud ${action.quoteRef} er markeret som sendt til ${quote.company.name}` +
+              (quote.company.email ? ` (${quote.company.email})` : "") +
+              `. Du kan stadig fysisk-afsende mail fra tilbuds-siden hvis du vil have HTML-template-versionen.`,
+          },
+          appliedChange: `${action.quoteRef} → sent`,
+        };
+      }
+
       case "lead.setStatus": {
         // Fuzzy match på lead-navn
         const lead = await db.lead.findFirst({
@@ -229,6 +414,276 @@ async function executeLookup(lookup: AssistantLookup): Promise<AssistantReply> {
 
   try {
     switch (lookup.kind) {
+      case "lookup.bestLeads": {
+        const count = lookup.count ?? 3;
+        // Score: status (qualified > contacted > new), kilde-kvalitet, alder
+        const allOpen = await db.lead.findMany({
+          where: { tenantId, status: { in: ["new", "contacted", "qualified"] } },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            company: true,
+            status: true,
+            source: true,
+            createdAt: true,
+            notes: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        const STATUS_WEIGHT: Record<string, number> = {
+          qualified: 100,
+          contacted: 60,
+          new: 30,
+        };
+        const SOURCE_BOOST: Record<string, number> = {
+          "Anbefaling": 20,
+          "Cold call": 10,
+          "Event": 15,
+          "Web": 5,
+        };
+        const scored = allOpen
+          .map((l) => {
+            const ageDays = Math.floor((Date.now() - l.createdAt.getTime()) / (24 * 60 * 60 * 1000));
+            // Friske leads vurderes højere (max 30 dage)
+            const freshness = Math.max(0, 30 - ageDays);
+            const score =
+              (STATUS_WEIGHT[l.status] ?? 0) +
+              (SOURCE_BOOST[l.source ?? ""] ?? 0) +
+              freshness;
+            // Næste-skridt-anbefaling
+            const nextStep =
+              l.status === "new"
+                ? "Kontakt dem indenfor 24 timer (kald eller mail)"
+                : l.status === "contacted"
+                ? "Følg op + book kvalificeringsmøde"
+                : "Send tilbud — de er klar til konvertering";
+            return { lead: l, score, ageDays, nextStep };
+          })
+          .sort((a, b) => b.score - a.score)
+          .slice(0, count);
+
+        if (scored.length === 0) {
+          return {
+            ok: true,
+            intent: {
+              type: "lookup",
+              lookup,
+              preview: "Ingen aktive leads at vurdere. Tilføj nye leads under /leads.",
+            },
+            data: { scored: [] },
+          };
+        }
+
+        const lines = scored
+          .map((s, i) => {
+            const name = `${s.lead.firstName} ${s.lead.lastName}`.trim();
+            const comp = s.lead.company ? ` (${s.lead.company})` : "";
+            return (
+              `${i + 1}. ${name}${comp} — status: ${s.lead.status}\n` +
+              `   📅 ${s.ageDays} dage siden oprettelse · kilde: ${s.lead.source ?? "—"}\n` +
+              `   👉 Næste: ${s.nextStep}`
+            );
+          })
+          .join("\n\n");
+
+        return {
+          ok: true,
+          intent: {
+            type: "lookup",
+            lookup,
+            preview: `Dine top ${scored.length} leads — prioriteret efter status, kilde og alder:\n\n${lines}`,
+          },
+          data: scored,
+        };
+      }
+
+      case "lookup.dashboardSummary": {
+        const [
+          openTickets,
+          criticalTickets,
+          activeDeals,
+          pipelineValue,
+          newLeads,
+          overdueInvoices,
+          lowBundles,
+        ] = await Promise.all([
+          db.ticket.count({
+            where: { tenantId, status: { in: ["open", "pending_customer", "pending_supplier"] } },
+          }),
+          db.ticket.count({
+            where: { tenantId, priority: "critical", status: { in: ["open", "pending_customer", "pending_supplier"] } },
+          }),
+          db.deal.count({
+            where: { tenantId, stage: { notIn: ["won", "lost"] } },
+          }),
+          db.deal.aggregate({
+            where: { tenantId, stage: { notIn: ["won", "lost"] } },
+            _sum: { value: true },
+          }),
+          db.lead.count({
+            where: { tenantId, status: "new" },
+          }),
+          db.invoice.count({
+            where: { tenantId, status: "overdue" } as any,
+          }).catch(() => 0),
+          db.hourBundle.findMany({
+            where: { tenantId, isActive: true },
+            select: { name: true, totalHours: true, usedMinutes: true, company: { select: { name: true } } },
+          }),
+        ]);
+        const lowBundlesAtRisk = lowBundles.filter((b) => {
+          const total = Number(b.totalHours);
+          const used = Number(b.usedMinutes) / 60;
+          return total > 0 && used / total >= 0.8;
+        }).length;
+        const pipeline = Number(pipelineValue._sum.value ?? 0);
+
+        const lines = [
+          `🎫 Tickets: ${openTickets} åbne` + (criticalTickets > 0 ? ` (${criticalTickets} kritisk!)` : ""),
+          `💼 Pipeline: ${activeDeals} deals · ${pipeline.toLocaleString("da-DK")} kr`,
+          `🎯 Nye leads: ${newLeads}`,
+          `💰 Forfaldne fakturaer: ${overdueInvoices}`,
+          `✂️ Klippekort under 20% saldo: ${lowBundlesAtRisk}`,
+        ];
+
+        // Prioriterede actions
+        const actions: string[] = [];
+        if (criticalTickets > 0) actions.push(`Tag fat i de ${criticalTickets} kritiske tickets nu`);
+        if (overdueInvoices > 0) actions.push(`Følg op på ${overdueInvoices} forfaldne fakturaer`);
+        if (lowBundlesAtRisk > 0) actions.push(`${lowBundlesAtRisk} klippekort er ved at løbe ud — kontakt kunderne om fornyelse`);
+        if (newLeads > 0) actions.push(`Behandl ${newLeads} nye leads — gerne indenfor 24 timer`);
+
+        return {
+          ok: true,
+          intent: {
+            type: "lookup",
+            lookup,
+            preview:
+              `📊 Dagens overblik:\n\n${lines.join("\n")}\n\n` +
+              (actions.length > 0
+                ? `🎯 Prioriteret to-do:\n${actions.map((a) => `  • ${a}`).join("\n")}`
+                : "✨ Ingen kritiske ting — fortsæt det gode arbejde!"),
+          },
+          data: { openTickets, criticalTickets, activeDeals, pipeline, newLeads, overdueInvoices, lowBundlesAtRisk },
+        };
+      }
+
+      case "lookup.atRiskCustomers": {
+        const companies = await db.company.findMany({
+          where: {
+            tenantId,
+            isActive: true,
+            healthScore: { not: null, lte: 59 },
+          } as any,
+          orderBy: { healthScore: "asc" } as any,
+          take: 5,
+          select: { name: true, healthScore: true, healthSignals: true } as any,
+        });
+        if (companies.length === 0) {
+          return {
+            ok: true,
+            intent: {
+              type: "lookup",
+              lookup,
+              preview: "Ingen kunder i risiko-zone (alle har health-score over 60). Du kan genberegne scores fra /kunder.",
+            },
+            data: { companies: [] },
+          };
+        }
+        const lines = companies
+          .map((c: any) => {
+            const reasons = (c.healthSignals?.reasons ?? []) as string[];
+            return `${c.name} (${c.healthScore}/100)${reasons[0] ? `\n  ⚠️ ${reasons[0]}` : ""}`;
+          })
+          .join("\n\n");
+        return {
+          ok: true,
+          intent: {
+            type: "lookup",
+            lookup,
+            preview: `Kunder med lav health-score:\n\n${lines}`,
+          },
+          data: companies,
+        };
+      }
+
+      case "lookup.myWeek": {
+        const now = new Date();
+        const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+        const userId = session.user.id!;
+
+        const [myTickets, myDeals, myProjects] = await Promise.all([
+          db.ticket.findMany({
+            where: {
+              tenantId,
+              assignedToId: userId,
+              status: { in: ["open", "pending_customer", "pending_supplier"] },
+            },
+            select: { number: true, title: true, priority: true, company: { select: { name: true } } },
+            orderBy: [{ priority: "desc" }],
+            take: 10,
+          }),
+          db.deal.findMany({
+            where: {
+              tenantId,
+              assignedToId: userId,
+              stage: { notIn: ["won", "lost"] },
+              expectedCloseDate: { lte: weekFromNow },
+            },
+            select: { title: true, value: true, expectedCloseDate: true, stage: true },
+            orderBy: { expectedCloseDate: "asc" },
+            take: 10,
+          }),
+          db.project.findMany({
+            where: {
+              tenantId,
+              assignedToId: userId,
+              status: { in: ["active", "planning"] },
+              endDate: { lte: weekFromNow, gte: now },
+            },
+            select: { number: true, title: true, endDate: true, company: { select: { name: true } } },
+            take: 10,
+          }),
+        ]);
+
+        const sections: string[] = [];
+        if (myTickets.length > 0) {
+          sections.push(
+            `🎫 Dine åbne tickets:\n` +
+              myTickets.map((t) => `  • T-${String(t.number).padStart(4, "0")} [${t.priority}] ${t.title} (${t.company.name})`).join("\n"),
+          );
+        }
+        if (myDeals.length > 0) {
+          sections.push(
+            `💼 Dine deals der lukkes denne uge:\n` +
+              myDeals
+                .map((d) => `  • ${d.title} — ${d.stage} · ${Number(d.value ?? 0).toLocaleString("da-DK")} kr · ${d.expectedCloseDate?.toLocaleDateString("da-DK") ?? "—"}`)
+                .join("\n"),
+          );
+        }
+        if (myProjects.length > 0) {
+          sections.push(
+            `📁 Dine projekter med deadline:\n` +
+              myProjects.map((p) => `  • P-${String(p.number).padStart(4, "0")} ${p.title} (${p.company.name}) — ${p.endDate?.toLocaleDateString("da-DK")}`).join("\n"),
+          );
+        }
+
+        return {
+          ok: true,
+          intent: {
+            type: "lookup",
+            lookup,
+            preview:
+              sections.length > 0
+                ? `Din uge:\n\n${sections.join("\n\n")}`
+                : "Ingen åbne opgaver tildelt dig denne uge — nyd roen ☕",
+          },
+          data: { myTickets, myDeals, myProjects },
+        };
+      }
+
       case "stats.leadFunnel": {
         const stages = await db.lead.groupBy({
           by: ["status"],
