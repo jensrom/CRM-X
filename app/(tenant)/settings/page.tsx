@@ -253,47 +253,6 @@ export default async function SettingsPage() {
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
 
-          <Link href="/settings/audit"
-            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-slate-500/10 flex items-center justify-center">
-                <ScrollText className="h-4 w-4 text-slate-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium group-hover:text-primary transition-colors">Audit-log</p>
-                <p className="text-xs text-muted-foreground">Spor alle handlinger</p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-
-          <Link href="/settings/invoice-config"
-            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium group-hover:text-primary transition-colors">Faktura-konfiguration</p>
-                <p className="text-xs text-muted-foreground">Afsender, EAN, betalingsinfo</p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-
-          <Link href="/settings/compliance"
-            className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-primary/40 hover:shadow-sm transition-all group">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <ShieldCheck className="h-4 w-4 text-amber-600" />
-              </div>
-              <div>
-                <p className="text-sm font-medium group-hover:text-primary transition-colors">Compliance</p>
-                <p className="text-xs text-muted-foreground">GDPR + audit</p>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
         </div>
       </div>
     </>
