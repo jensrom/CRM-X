@@ -318,6 +318,9 @@ model User {
   assignedTickets  Ticket[]         @relation("TicketAssignee")
   assignedDeals    Deal[]           @relation("DealAssignee")
   managedProjects  Project[]        @relation("ProjectManager")
+  assignedLeads    Lead[]           @relation("LeadAssignee")
+  assignedQuotes   Quote[]          @relation("QuoteAssignee")
+  assignedBundles  HourBundle[]     @relation("BundleAssignee")
   activities      Activity[]
   checkIns        ActiveCheckIn[]
   notifications   Notification[]
@@ -648,6 +651,7 @@ model HourBundle {
   id           String   @id @default(cuid())
   tenantId     String
   companyId    String
+  assignedToId String?
   number       Int  @default(1)  // Auto-increment pr. tenant (KB-0001 format)
   name         String?  // Valgfrit navn, fx "20-timers pakke Q3 2025"
   totalHours   Int      // Antal timer solgt
@@ -664,10 +668,12 @@ model HourBundle {
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company        Company         @relation(fields: [companyId], references: [id])
+  assignedTo     User?           @relation("BundleAssignee", fields: [assignedToId], references: [id])
   projectBundles ProjectBundle[]
   timeLogs       TimeLog[]
 
   @@unique([tenantId, number])
+  @@index([tenantId, assignedToId])
   @@map("hour_bundles")
 }
 
@@ -973,6 +979,7 @@ model Lead {
   id         String   @id @default(cuid())
   tenantId   String
   campaignId String?
+  assignedToId String?
   firstName  String
   lastName   String
   email      String?
@@ -996,8 +1003,10 @@ model Lead {
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign   Campaign?  @relation(fields: [campaignId], references: [id])
+  assignedTo User?      @relation("LeadAssignee", fields: [assignedToId], references: [id])
   activities Activity[] // Aktivitetslog pr. lead (opkald, møder, opfølgninger)
 
+  @@index([tenantId, assignedToId])
   @@map("leads")
 }
 
@@ -1114,6 +1123,7 @@ model Quote {
   tenantId     String
   companyId    String
   dealId       String?
+  assignedToId String?
   number       Int
   title        String?
   status       String    @default("draft")
@@ -1138,11 +1148,13 @@ model Quote {
   tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company Company     @relation(fields: [companyId], references: [id])
   deal    Deal?       @relation(fields: [dealId], references: [id])
+  assignedTo User?    @relation("QuoteAssignee", fields: [assignedToId], references: [id])
   lines   QuoteLine[]
   comments Comment[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status])
+  @@index([tenantId, assignedToId])
   @@map("quotes")
 }
 

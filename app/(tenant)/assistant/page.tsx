@@ -73,7 +73,9 @@ export default async function TenantAssistantPage({
         initialMessages={initialMessages}
       />
 
-      {/* Eksempel-bibliotek */}
+      {/* Eksempel-bibliotek — vises kun ved tom-state (ingen aktiv samtale)
+          for at undgaa at stjaele plads under en koerende dialog. */}
+      {!activeId && (
       <div className="mt-6 bg-card border border-border rounded-xl p-5">
         <h3 className="text-sm font-semibold mb-3">Eksempler på hvad jeg forstår</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -114,6 +116,7 @@ export default async function TenantAssistantPage({
           </div>
         </div>
       </div>
+      )}
     </>
   );
 }

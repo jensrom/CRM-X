@@ -27,6 +27,35 @@ export type AssistantAction =
   | { kind: "timelog.add"; minutes: number; date: string; bundleRef?: string; ticketRef?: string; description?: string }
   | { kind: "quote.send"; quoteRef: string; recipientHint?: string };
 
+/**
+ * Destruktive actions kraever brugerens [Godkend][Annuller] foer eksekvering.
+ *
+ * Filosofi: status-bumps som lead.nextStep eller setStatus er reversible og
+ * lav-risiko, mens timelog/quote.send/deal.won/ticket-close har sideeffekter
+ * (faktura, mail, audit) der ikke triviltt rulles tilbage.
+ */
+export function isDestructiveAction(action: AssistantAction): boolean {
+  switch (action.kind) {
+    case "timelog.add":
+      // Skaber TimeLog + traekker fra klippekort-saldo
+      return true;
+    case "quote.send":
+      // Markerer tilbud som sendt + saetter sentAt
+      return true;
+    case "deal.setStage":
+      // Vundet trigger auto-faktura, Tabt arkiverer — begge svaere at rulle tilbage
+      return action.newStage === "won" || action.newStage === "lost";
+    case "ticket.setStatus":
+      // Lukket/loest paavirker SLA-malinger + lukker for nye comments
+      return action.newStatus === "closed" || action.newStatus === "resolved";
+    case "lead.setStatus":
+    case "lead.nextStep":
+    case "company.recalcHealth":
+      // Reversible / lav-risiko
+      return false;
+  }
+}
+
 export type AssistantLookup =
   | { kind: "lead.byName"; name: string }
   | { kind: "deal.byTitle"; title: string }

@@ -8,11 +8,11 @@ import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 
 const STATUS_COLS = [
-  { key: "new",       label: "Nye",          bg: "bg-slate-50 border-slate-200",    dot: "bg-slate-400",   badge: "bg-slate-100 text-slate-700" },
-  { key: "contacted", label: "Kontaktet",     bg: "bg-blue-50 border-blue-200",      dot: "bg-blue-500",    badge: "bg-blue-100 text-blue-700" },
-  { key: "qualified", label: "Kvalificerede", bg: "bg-violet-50 border-violet-200",  dot: "bg-violet-500",  badge: "bg-violet-100 text-violet-700" },
-  { key: "converted", label: "Konverteret",   bg: "bg-emerald-50 border-emerald-200",dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-700" },
-  { key: "lost",      label: "Tabte",         bg: "bg-red-50 border-red-200",        dot: "bg-red-400",     badge: "bg-red-100 text-red-700" },
+  { key: "new",       label: "Nye",          bg: "bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800",       dot: "bg-slate-400",   badge: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300" },
+  { key: "contacted", label: "Kontaktet",     bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900",            dot: "bg-blue-500",    badge: "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300" },
+  { key: "qualified", label: "Kvalificerede", bg: "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-900",    dot: "bg-violet-500",  badge: "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300" },
+  { key: "converted", label: "Konverteret",   bg: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900",dot: "bg-emerald-500", badge: "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300" },
+  { key: "lost",      label: "Tabte",         bg: "bg-red-50 dark:bg-rose-950/30 border-red-200 dark:border-rose-900",              dot: "bg-red-400",     badge: "bg-red-100 dark:bg-rose-900/50 text-red-700 dark:text-rose-300" },
 ];
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -95,19 +95,4 @@ export default async function LeadsPage({
                         </p>
                       )}
                       {lead.source && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{SOURCE_LABEL[lead.source] ?? lead.source}</p>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-                {col.leads.length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-4">Ingen</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
-}
+                        <p cla
