@@ -318,6 +318,9 @@ model User {
   assignedTickets  Ticket[]         @relation("TicketAssignee")
   assignedDeals    Deal[]           @relation("DealAssignee")
   managedProjects  Project[]        @relation("ProjectManager")
+  assignedLeads    Lead[]           @relation("LeadAssignee")
+  assignedQuotes   Quote[]          @relation("QuoteAssignee")
+  assignedBundles  HourBundle[]     @relation("BundleAssignee")
   activities      Activity[]
   checkIns        ActiveCheckIn[]
   notifications   Notification[]
@@ -648,6 +651,8 @@ model HourBundle {
   id           String   @id @default(cuid())
   tenantId     String
   companyId    String
+  // Tekniker / account manager der ejer klippekortet
+  assignedToId String?
   number       Int  @default(1)  // Auto-increment pr. tenant (KB-0001 format)
   name         String?  // Valgfrit navn, fx "20-timers pakke Q3 2025"
   totalHours   Int      // Antal timer solgt
@@ -664,10 +669,12 @@ model HourBundle {
 
   tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company        Company         @relation(fields: [companyId], references: [id])
+  assignedTo     User?           @relation("BundleAssignee", fields: [assignedToId], references: [id])
   projectBundles ProjectBundle[]
   timeLogs       TimeLog[]
 
   @@unique([tenantId, number])
+  @@index([tenantId, assignedToId])
   @@map("hour_bundles")
 }
 
@@ -973,6 +980,9 @@ model Lead {
   id         String   @id @default(cuid())
   tenantId   String
   campaignId String?
+  // --- Ejerskab: sælger der har "claimed" leadet ---
+  // null = unclaimed (vises som "ledigt" på alle sælgeres dashboard)
+  assignedToId String?
   firstName  String
   lastName   String
   email      String?
@@ -996,8 +1006,10 @@ model Lead {
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   campaign   Campaign?  @relation(fields: [campaignId], references: [id])
+  assignedTo User?      @relation("LeadAssignee", fields: [assignedToId], references: [id])
   activities Activity[] // Aktivitetslog pr. lead (opkald, møder, opfølgninger)
 
+  @@index([tenantId, assignedToId])
   @@map("leads")
 }
 
@@ -1114,6 +1126,8 @@ model Quote {
   tenantId     String
   companyId    String
   dealId       String?
+  // Ejer = sælger ansvarlig for tilbuddet (default: createdById)
+  assignedToId String?
   number       Int
   title        String?
   status       String    @default("draft")
@@ -1138,11 +1152,13 @@ model Quote {
   tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company Company     @relation(fields: [companyId], references: [id])
   deal    Deal?       @relation(fields: [dealId], references: [id])
+  assignedTo User?    @relation("QuoteAssignee", fields: [assignedToId], references: [id])
   lines   QuoteLine[]
   comments Comment[]
 
   @@unique([tenantId, number])
   @@index([tenantId, status])
+  @@index([tenantId, assignedToId])
   @@map("quotes")
 }
 
@@ -1489,32 +1505,4 @@ model AssistantThread {
   userId    String?  // null = super-admin (SuperAdmin-tabel, har ikke FK her)
   // Identitet for super-admins der ikke har User-row
   ownerEmail String  // altid sat — bruges som lookup-key for thread-ownership
-  ownerKind  String  @default("user") // "user" | "super_admin"
-  title     String   @default("Ny samtale")
-  pinned    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  messages AssistantMessage[]
-
-  @@index([ownerEmail, ownerKind, updatedAt])
-  @@index([tenantId, updatedAt])
-  @@map("assistant_threads")
-}
-
-model AssistantMessage {
-  id         String   @id @default(cuid())
-  threadId   String
-  role       String   // "user" | "assistant"
-  text       String   @db.Text
-  // Gemt parseret intent + reply hvis assistant-besked
-  intentJson Json?
-  // Klassificering: success/error/info/help — bruges af UI
-  variant    String?  // null | "success" | "error" | "info" | "help"
-  createdAt  DateTime @default(now())
-
-  thread AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-
-  @@index([threadId, createdAt])
-  @@map("assistant_messages")
-}
+  ownerKind  String  @def
