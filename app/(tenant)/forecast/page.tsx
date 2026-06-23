@@ -105,6 +105,7 @@ export default async function ForecastDashboardPage() {
           title="End-to-end konvertering — Leads → Deals → Vundet"
           subtitle={`${endToEnd.totalLeads} leads · ${endToEnd.convertedToDeals} konverteret · ${endToEnd.wonDeals} vundet (${endToEnd.leadToWinRate.toFixed(1)}% lead-to-win)`}
           icon={Target}
+          className="mt-4"
         >
           <div className="space-y-2.5">
             {endToEnd.stages.map((s, i) => {
@@ -141,16 +142,14 @@ export default async function ForecastDashboardPage() {
                     <span className="text-xs tabular-nums text-muted-foreground">
                       {s.count}{" "}
                       <span className="opacity-60">
-                        {s.pctOfTop > 100
-                          ? `· heraf ${endToEnd.totalLeads} fra lead, ${s.count - endToEnd.totalLeads} direkte`
-                          : `· ${s.pctOfTop.toFixed(1)}% af top`}
+                        · {s.pctOfTop.toFixed(1)}% af top
                       </span>
                     </span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${barColor}`}
-                      style={{ width: `${Math.max(2, Math.min(100, s.pctOfTop))}%` }}
+                      style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
                     />
                   </div>
                 </div>
@@ -248,102 +247,4 @@ export default async function ForecastDashboardPage() {
                   <AlertTriangle className="h-3.5 w-3.5" />
                   {velocity.stalledDeals.length} stallede deals identificeret
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Se hele listen under <strong>Velocity</strong>-tabben.
-                </p>
-              </div>
-            )}
-          </ForecastSection>
-        </div>
-
-        {/* Næste 6 måneders projektion (oversigt) */}
-        <ForecastSection
-          title="Næste 6 måneders projektion"
-          subtitle="Forventet (vægtet) · Konservativt (≥70% sandsynlighed) · Best case (alt lukker)"
-          icon={Sparkles}
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-            <ProjectionCell
-              label="Konservativt"
-              value={revenue.totalConservative}
-              tone="slate"
-            />
-            <ProjectionCell
-              label="Forventet"
-              value={revenue.totalExpected}
-              tone="emerald"
-              highlight
-            />
-            <ProjectionCell
-              label="Best case"
-              value={revenue.totalBest}
-              tone="violet"
-            />
-          </div>
-          <div className="space-y-2">
-            {revenue.months.map((m) => {
-              const max = Math.max(...revenue.months.map((mm) => mm.bestTotal), 1);
-              return (
-                <div key={m.yearMonth}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium">{m.monthLabel}</span>
-                    <span className="text-muted-foreground tabular-nums">
-                      {formatCurrency(m.expectedTotal)}
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-secondary rounded-full overflow-hidden relative">
-                    {/* Best case (lyseste) */}
-                    <div className="absolute inset-y-0 left-0 bg-violet-200 rounded-full"
-                         style={{ width: `${(m.bestTotal / max) * 100}%` }} />
-                    {/* Expected (medium) */}
-                    <div className="absolute inset-y-0 left-0 bg-emerald-400 rounded-full"
-                         style={{ width: `${(m.expectedTotal / max) * 100}%` }} />
-                    {/* Conservative (mørkest) */}
-                    <div className="absolute inset-y-0 left-0 bg-emerald-700 rounded-full"
-                         style={{ width: `${(m.conservativeTotal / max) * 100}%` }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-4 pt-4 border-t border-border">
-            <ConfidenceBadge level={revenue.confidence} />
-          </div>
-        </ForecastSection>
-      </ForecastShell>
-    </>
-  );
-}
-
-function DataQualityBar({ label, pct }: { label: string; pct: number }) {
-  const tone = pct >= 80 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-red-500";
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-semibold tabular-nums">{pct}%</span>
-      </div>
-      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function ProjectionCell({
-  label, value, tone, highlight = false,
-}: {
-  label: string; value: number; tone: "slate" | "emerald" | "violet"; highlight?: boolean;
-}) {
-  const colors: Record<string, string> = {
-    slate:   "border-slate-200 bg-slate-50",
-    emerald: "border-emerald-200 bg-emerald-50",
-    violet:  "border-violet-200 bg-violet-50",
-  };
-  return (
-    <div className={`rounded-lg border p-4 ${colors[tone]} ${highlight ? "ring-2 ring-emerald-300" : ""}`}>
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-bold tabular-nums mt-1">{formatCurrency(value)}</p>
-    </div>
-  );
-}
+                <p className="text-xs text-muted-fo

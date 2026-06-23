@@ -12,7 +12,6 @@ import { auth } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import {
   parseAssistantInput,
-  isDestructiveAction,
   type AssistantIntent,
   type AssistantAction,
   type AssistantLookup,
@@ -45,19 +44,6 @@ export async function askAssistant(input: string): Promise<AssistantReply> {
   }
 
   if (intent.type === "action") {
-    // Destruktive actions returneres som preview uden at eksekvere — UI viser
-    // [Godkend][Annuller] og confirmThreadAction kalder executeConfirmedAction.
-    if (isDestructiveAction(intent.action)) {
-      return {
-        ok: true,
-        intent: {
-          type: "action",
-          action: intent.action,
-          preview: buildConfirmationPreview(intent.action),
-        },
-        // appliedChange BEVIDST udeladt — signalerer at action ikke er kort
-      };
-    }
     return executeAction(intent.action);
   }
 
@@ -66,38 +52,6 @@ export async function askAssistant(input: string): Promise<AssistantReply> {
   }
 
   return { ok: false, intent: { type: "error", message: "Ukendt intent" }, error: "Ukendt intent" };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONFIRMATION-PREVIEW — vises i chat med [Godkend][Annullér]
-// ─────────────────────────────────────────────────────────────────────────────
-
-function buildConfirmationPreview(action: AssistantAction): string {
-  switch (action.kind) {
-    case "timelog.add": {
-      const t = (action.minutes / 60).toFixed(1).replace(/\.0$/, "");
-      const where = action.bundleRef ? `klippekort ${action.bundleRef}` : action.ticketRef ? `ticket ${action.ticketRef}` : "ukendt placering";
-      return `⚠️ Vil registrere ${action.minutes} min (${t}t) på ${where} dato ${action.date}. Bekraeft for at gemme.`;
-    }
-    case "quote.send":
-      return `⚠️ Vil markere tilbud ${action.quoteRef} som sendt. Bekraeft — handlingen kan ikke trivielt fortrydes.`;
-    case "deal.setStage":
-      if (action.newStage === "won") return `⚠️ Vil markere deal "${action.dealTitle}" som VUNDET — det trigger auto-faktura. Bekraeft.`;
-      if (action.newStage === "lost") return `⚠️ Vil markere deal "${action.dealTitle}" som TABT. Bekraeft.`;
-      return `Vil skifte deal "${action.dealTitle}" til ${action.newStage}.`;
-    case "ticket.setStatus":
-      return `⚠️ Vil saette ${action.ticketRef} til ${action.newStatus} — SLA stopper og ticket lukkes for nye kommentarer. Bekraeft.`;
-    default:
-      return `Vil udfoere handlingen. Bekraeft.`;
-  }
-}
-
-/**
- * Public entry for confirmed destruktive actions — kaldes fra
- * confirmThreadAction efter brugerens [Godkend].
- */
-export async function executeConfirmedAction(action: AssistantAction): Promise<AssistantReply> {
-  return executeAction(action);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -190,7 +144,7 @@ async function executeAction(action: AssistantAction): Promise<AssistantReply> {
           }
           bundleId = bundle.id;
           companyId = bundle.companyId;
-          bundleName = bundle.name ?? `KB-${(bundle as any).number ?? ""}`;
+          bundleName = bundle.name;
           // Tjek at der er nok timer tilbage
           const remainingMin = Number(bundle.totalHours) * 60 - Number(bundle.usedMinutes);
           if (action.minutes > remainingMin) {
@@ -891,7 +845,7 @@ async function executeLookup(lookup: AssistantLookup): Promise<AssistantReply> {
             preview:
               `${_c.name} (CVR ${_c.orgNumber ?? "—"})\n` +
               `  ${_c.phone ?? ""} · ${_c.email ?? ""}\n` +
-              `  Health: ${_c.healthScore != null ? `${_c.healthScore}/100` : "Ikke beregnet endnu"}\n` +
+              `  Health: ${_c.healthScore ?? "—"}/100\n` +
               `  ${_c._count.tickets} tickets · ${_c._count.projects} projekter · ${_c._count.hourBundles} klippekort`,
           },
           data: c,
