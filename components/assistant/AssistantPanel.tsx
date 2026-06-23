@@ -39,6 +39,8 @@ import {
   renameThread,
   setThreadPinned,
   deleteThread,
+  confirmThreadAction,
+  cancelThreadAction,
 } from "@/app/actions/assistant-threads";
 
 interface ThreadSummary {
@@ -67,6 +69,8 @@ const QUICK_COMMANDS = [
   "vis pipeline",
   "vis åbne tickets",
   "vis leads",
+  "opsummer dagens status",
+  "hvad er status på mine 3 bedste leads",
   "hjælp",
 ];
 
@@ -228,6 +232,48 @@ export function AssistantPanel({
     startTransition(() => renameThread(threadId, newTitle));
   };
 
+  // Bekraeft pending destruktiv action
+  const handleConfirm = (messageId: string) => {
+    // Marker visuelt at vi venter
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, variant: "confirmed" } : m)),
+    );
+    startTransition(async () => {
+      try {
+        const res = await confirmThreadAction(messageId);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: res.resultMessage.id,
+            role: "assistant",
+            text: res.resultMessage.text,
+            variant: res.resultMessage.variant,
+            createdAt: res.resultMessage.createdAt,
+          },
+        ]);
+      } catch (e: any) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `tmp-e-${Date.now()}`,
+            role: "assistant",
+            text: e?.message ?? "Kunne ikke bekraefte",
+            variant: "error",
+            createdAt: new Date(),
+          },
+        ]);
+      }
+    });
+  };
+
+  // Annuller pending action — marker som cancelled
+  const handleCancel = (messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, variant: "cancelled" } : m)),
+    );
+    startTransition(() => cancelThreadAction(messageId));
+  };
+
   const removeThread = (threadId: string) => {
     if (!confirm("Slet hele samtalen?")) return;
     setThreads((prev) => prev.filter((t) => t.id !== threadId));
@@ -308,16 +354,24 @@ export function AssistantPanel({
                         active ? "text-primary font-medium" : "text-foreground/80"
                       }`}
                     >
-                      <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 opacity-60" />
+                      {t.pinned ? (
+                        <Pin className="h-3 w-3 mt-0.5 shrink-0 text-amber-500 fill-amber-500/30" />
+                      ) : (
+                        <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 opacity-60" />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <p className="truncate">{t.title}</p>
+                        <p className="truncate flex items-center gap-1">
+                          {t.title}
+                          {t.pinned && (
+                            <span className="text-[9px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold">
+                              Pinnet
+                            </span>
+                          )}
+                        </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">
                           {t._count.messages} beskeder · {relativeTime(t.updatedAt)}
                         </p>
                       </div>
-                      {t.pinned && (
-                        <Pin className="h-2.5 w-2.5 mt-0.5 text-muted-foreground" />
-                      )}
                     </button>
 
                     {/* Hover-actions */}
@@ -390,7 +444,12 @@ export function AssistantPanel({
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-5 space-y-3">
           {messages.map((m) => (
-            <MessageBubble key={m.id} message={m} />
+            <MessageBubble
+              key={m.id}
+              message={m}
+              onConfirm={() => handleConfirm(m.id)}
+              onCancel={() => handleCancel(m.id)}
+            />
           ))}
           {isPending && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground pl-11">
@@ -452,7 +511,15 @@ export function AssistantPanel({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  onConfirm,
+  onCancel,
+}: {
+  message: Message;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+}) {
   const isUser = message.role === "user";
   const variantColors: Record<string, string> = {
     success:
@@ -461,11 +528,19 @@ function MessageBubble({ message }: { message: Message }) {
       "bg-rose-50 dark:bg-rose-950/30 border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200",
     info: "bg-card border-border text-foreground",
     help: "bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200",
+    pending: "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200",
+    confirmed: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 opacity-70",
+    cancelled: "bg-secondary border-border text-muted-foreground opacity-60 line-through",
   };
   const v = (message.variant as string) || "info";
   const colors = variantColors[v] ?? variantColors.info;
   const Icon =
-    v === "success" ? CheckCircle2 : v === "error" ? XCircle : v === "help" ? Wand2 : Info;
+    v === "success" || v === "confirmed" ? CheckCircle2
+    : v === "error" ? XCircle
+    : v === "help" ? Wand2
+    : v === "pending" ? Info
+    : v === "cancelled" ? XCircle
+    : Info;
 
   if (isUser) {
     return (
@@ -490,6 +565,26 @@ function MessageBubble({ message }: { message: Message }) {
             <Icon className="h-3.5 w-3.5 shrink-0 mt-0.5 opacity-70" />
             <span className="flex-1 break-words">{message.text}</span>
           </div>
+          {v === "pending" && (onConfirm || onCancel) && (
+            <div className="flex items-center gap-2 mt-3 pt-3 border-t border-amber-300/50 dark:border-amber-800/50">
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="flex-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-medium inline-flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Godkend og udfør
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-3 py-1.5 bg-card hover:bg-secondary border border-border text-foreground rounded-md text-xs font-medium inline-flex items-center justify-center gap-1.5"
+              >
+                <XCircle className="h-3 w-3" />
+                Annullér
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -105,7 +105,6 @@ export default async function ForecastDashboardPage() {
           title="End-to-end konvertering — Leads → Deals → Vundet"
           subtitle={`${endToEnd.totalLeads} leads · ${endToEnd.convertedToDeals} konverteret · ${endToEnd.wonDeals} vundet (${endToEnd.leadToWinRate.toFixed(1)}% lead-to-win)`}
           icon={Target}
-          className="mt-4"
         >
           <div className="space-y-2.5">
             {endToEnd.stages.map((s, i) => {
@@ -142,14 +141,16 @@ export default async function ForecastDashboardPage() {
                     <span className="text-xs tabular-nums text-muted-foreground">
                       {s.count}{" "}
                       <span className="opacity-60">
-                        · {s.pctOfTop.toFixed(1)}% af top
+                        {s.pctOfTop > 100
+                          ? `· heraf ${endToEnd.totalLeads} fra lead, ${s.count - endToEnd.totalLeads} direkte`
+                          : `· ${s.pctOfTop.toFixed(1)}% af top`}
                       </span>
                     </span>
                   </div>
                   <div className="h-2 bg-secondary rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full ${barColor}`}
-                      style={{ width: `${Math.max(2, s.pctOfTop)}%` }}
+                      style={{ width: `${Math.max(2, Math.min(100, s.pctOfTop))}%` }}
                     />
                   </div>
                 </div>
