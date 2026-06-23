@@ -14,9 +14,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   parseAssistantInput,
+  isDestructiveAction,
   type AssistantIntent,
+  type AssistantAction,
 } from "@/lib/assistant";
-import { askAssistant } from "./assistant";
+import { askAssistant, executeConfirmedAction } from "./assistant";
 
 /**
  * Hent owner-context fra session — tenant-user eller super-admin.
@@ -193,8 +195,16 @@ export async function sendThreadMessage(args: {
         assistantText = intent.preview;
         variant = reply.ok ? "info" : "error";
       } else if (intent.type === "action") {
-        assistantText = intent.preview;
-        variant = reply.ok ? "success" : "error";
+        // SMART CONFIRMATION: destruktive actions kraever brugerens [Godkend]
+        // foer eksekvering. Vi gemmer intent + variant="pending" og lader
+        // UI vise knapperne. confirmThreadAction() kalder executor.
+        if (isDestructiveAction(intent.action) && !reply.appliedChange) {
+          assistantText = intent.preview;
+          variant = "pending";
+        } else {
+          assistantText = intent.preview;
+          variant = reply.ok ? "success" : "error";
+        }
       }
       intentJson = { intent, ok: reply.ok, appliedChange: reply.appliedChange };
     } catch (e: any) {
@@ -249,6 +259,93 @@ export async function setThreadPinned(threadId: string, pinned: boolean) {
     data: { pinned },
   });
   revalidatePath("/admin/assistant");
+}
+
+/**
+ * Bekraeft en pending destruktiv action: finder beskeden, henter intent fra
+ * intentJson, kalder executor og opdaterer beskeden + tilfoejer resultat-besked.
+ */
+export async function confirmThreadAction(messageId: string): Promise<{
+  ok: boolean;
+  resultMessage: {
+    id: string;
+    text: string;
+    variant: string;
+    createdAt: Date;
+  };
+}> {
+  const owner = await getOwnerContext();
+  const msg = await db.assistantMessage.findUnique({
+    where: { id: messageId },
+    include: { thread: { select: { ownerEmail: true, ownerKind: true } } },
+  });
+  if (!msg) throw new Error("Besked ikke fundet");
+  if (msg.thread.ownerEmail !== owner.email || msg.thread.ownerKind !== owner.kind) {
+    throw new Error("Ikke autoriseret");
+  }
+  if (msg.variant !== "pending") {
+    throw new Error("Besked er ikke en pending action");
+  }
+  const intent = (msg.intentJson as any)?.intent;
+  if (!intent || intent.type !== "action") {
+    throw new Error("Pending intent mangler");
+  }
+
+  // Marker pending som godkendt visuelt (skifter variant)
+  await db.assistantMessage.update({
+    where: { id: messageId },
+    data: { variant: "confirmed" },
+  });
+
+  // Eksekver
+  const result = await executeConfirmedAction(intent.action as AssistantAction);
+  const resultText = result.ok
+    ? (result.intent.type === "action" ? result.intent.preview : "Udfoert")
+    : (result.error ?? "Kunne ikke gennemfoere handlingen");
+
+  const newMsg = await db.assistantMessage.create({
+    data: {
+      threadId: msg.threadId,
+      role: "assistant",
+      text: resultText,
+      variant: result.ok ? "success" : "error",
+      intentJson: { intent: result.intent, ok: result.ok, appliedChange: result.appliedChange },
+    },
+  });
+  await db.assistantThread.update({
+    where: { id: msg.threadId },
+    data: { updatedAt: new Date() },
+  });
+  revalidatePath("/admin/assistant");
+  revalidatePath("/assistant");
+
+  return {
+    ok: result.ok,
+    resultMessage: {
+      id: newMsg.id,
+      text: newMsg.text,
+      variant: newMsg.variant ?? "info",
+      createdAt: newMsg.createdAt,
+    },
+  };
+}
+
+/** Annullér en pending action — markerer beskeden som "cancelled". */
+export async function cancelThreadAction(messageId: string): Promise<void> {
+  const owner = await getOwnerContext();
+  const msg = await db.assistantMessage.findUnique({
+    where: { id: messageId },
+    include: { thread: { select: { ownerEmail: true, ownerKind: true } } },
+  });
+  if (!msg) return;
+  if (msg.thread.ownerEmail !== owner.email || msg.thread.ownerKind !== owner.kind) return;
+  if (msg.variant !== "pending") return;
+  await db.assistantMessage.update({
+    where: { id: messageId },
+    data: { variant: "cancelled" },
+  });
+  revalidatePath("/admin/assistant");
+  revalidatePath("/assistant");
 }
 
 /** Slet en thread + alle dens beskeder (cascade). */
