@@ -341,20 +341,28 @@ export async function toggleUserActive(userId: string, tenantId: string, active:
   revalidatePath(`/admin/tenants/${tenantId}`);
 }
 
-// Nulstil brugerens password
+// Nulstil brugerens password — fejl rapporteres via ?userError= (ikke throw)
 export async function resetUserPassword(formData: FormData) {
   await requireSuperAdmin();
-  const userId = formData.get("userId") as string;
-  const tenantId = formData.get("tenantId") as string;
-  const password = formData.get("password") as string;
+  const userId = (formData.get("userId") as string) || "";
+  const tenantId = (formData.get("tenantId") as string) || "";
+  const password = ((formData.get("password") as string) || "").trim();
+
+  const backTo = `/admin/tenants/${tenantId}`;
+
+  if (!password) {
+    redirect(`${backTo}?userError=${encodeURIComponent("Skriv et nyt password før du trykker Nulstil")}`);
+  }
 
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { email: true, name: true },
   });
-  if (!user) throw new Error("Bruger ikke fundet");
+  if (!user) {
+    redirect(`${backTo}?userError=${encodeURIComponent("Bruger ikke fundet")}`);
+  }
 
-  const pwCheck = checkPassword(password, { email: user.email, name: user.name });
+  const pwCheck = checkPassword(password, { email: user!.email, name: user!.name });
   if (!pwCheck.ok) {
     await audit({
       action: "password_change",
@@ -364,7 +372,7 @@ export async function resetUserPassword(formData: FormData) {
       outcome: "failure",
       message: `Password policy violated at admin reset: ${pwCheck.errors.join("; ")}`,
     });
-    throw new Error(pwCheck.errors.join(", "));
+    redirect(`${backTo}?userError=${encodeURIComponent(pwCheck.errors.join(" · "))}`);
   }
 
   const hashed = await bcrypt.hash(password, PASSWORD_POLICY.bcryptCost);
@@ -381,6 +389,6 @@ export async function resetUserPassword(formData: FormData) {
     message: "Password reset by super admin",
   });
 
-  revalidatePath(`/admin/tenants/${tenantId}`);
-  redirect(`/admin/tenants/${tenantId}`);
+  revalidatePath(backTo);
+  redirect(`${backTo}?userOk=${encodeURIComponent("Password nulstillet for " + user!.email)}`);
 }

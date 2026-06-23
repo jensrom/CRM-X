@@ -22,12 +22,13 @@ export default async function TenantDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ userError?: string; userCreated?: string; onboarded?: string }>;
+  searchParams?: Promise<{ userError?: string; userCreated?: string; userOk?: string; onboarded?: string }>;
 }) {
   const { id } = await params;
   const sp = (await (searchParams ?? Promise.resolve({}))) as {
     userError?: string;
     userCreated?: string;
+    userOk?: string;
     onboarded?: string;
   };
   const session = await auth();
@@ -52,7 +53,7 @@ export default async function TenantDetailPage({
           <XCircle className="h-4 w-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-rose-900 dark:text-rose-200">
-              Kunne ikke oprette bruger
+              Handlingen kunne ikke gennemføres
             </p>
             <p className="text-xs text-rose-800 dark:text-rose-300 mt-0.5 break-words">
               {sp.userError}
@@ -61,6 +62,12 @@ export default async function TenantDetailPage({
               Password skal være mindst 12 tegn og indeholde mindst 3 af: små bogstaver, store bogstaver, tal, symbol.
             </p>
           </div>
+        </div>
+      )}
+      {sp.userOk && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-start gap-3">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-emerald-900 dark:text-emerald-200">{sp.userOk}</p>
         </div>
       )}
 
