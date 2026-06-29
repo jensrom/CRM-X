@@ -12,9 +12,19 @@ interface BackButtonProps {
 // BackButton med "husk hvor jeg kom fra"-logik.
 // Praeference-rækkefoelge:
 //   1) ?from= searchParam (eksplicit besked om hvor man kom fra)
-//   2) document.referrer (samme origin, ikke same path)
+//   2) document.referrer (samme origin, ikke same path, ikke auth-route)
 //   3) href-prop (default-mål for siden)
 //   4) router.back() som sidste udvej
+//
+// Auth-routes (/login, /logout, /api/auth/*, /signup, /reset-password)
+// filtreres bevidst fra referrer-tjekket — ellers smider Tilbage brugeren
+// tilbage til login-siden hvis han kom direkte hertil via bookmark/link.
+
+const AUTH_PATH_PREFIXES = ["/login", "/logout", "/signup", "/reset-password", "/api/auth"];
+
+function isAuthPath(pathname: string): boolean {
+  return AUTH_PATH_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`) || pathname.startsWith(`${p}?`));
+}
 
 export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
   const router = useRouter();
@@ -27,7 +37,11 @@ export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
     if (!ref) return;
     try {
       const refUrl = new URL(ref);
-      if (refUrl.origin === window.location.origin && refUrl.pathname !== window.location.pathname) {
+      if (
+        refUrl.origin === window.location.origin &&
+        refUrl.pathname !== window.location.pathname &&
+        !isAuthPath(refUrl.pathname)
+      ) {
         setReferrer(refUrl.pathname + refUrl.search);
       }
     } catch {
@@ -39,10 +53,10 @@ export function BackButton({ href, label = "Tilbage" }: BackButtonProps) {
     // Knappen siger altid "Tilbage" — destinationen vises som tooltip.
     // Brugeren skal ikke gætte hvor "Faktura"/"Kunde" foerer hen.
     const from = searchParams.get("from");
-    if (from && from.startsWith("/") && !from.startsWith("//")) {
+    if (from && from.startsWith("/") && !from.startsWith("//") && !isAuthPath(from.split("?")[0])) {
       return { target: from, displayLabel: "Tilbage" };
     }
-    if (referrer && referrer.startsWith("/") && !referrer.startsWith("//")) {
+    if (referrer && referrer.startsWith("/") && !referrer.startsWith("//") && !isAuthPath(referrer.split("?")[0])) {
       return { target: referrer, displayLabel: "Tilbage" };
     }
     return { target: href, displayLabel: "Tilbage" };
