@@ -9,8 +9,12 @@ import {
   calculatePlanPrice,
   formatPrice,
   ADDON_PRICE_PER_USER,
+  ADDON_LIST,
+  isAddOnAvailable,
+  getAddOnPricePerUser,
   type Currency,
   type PlanSlug,
+  type AddOnSlug,
 } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 import type { WizardState } from "./OnboardingWizard";
@@ -42,7 +46,21 @@ export function PlanStep({ state, update, currency, onNext, onPrev }: Props) {
   }
 
   const selectedPlan = PLAN_LIST.find((p) => p.slug === state.plan)!;
-  const breakdown = calculatePlanPrice(state.plan as PlanSlug, state.modules, state.maxUsers, currency);
+  const breakdown = calculatePlanPrice(
+    state.plan as PlanSlug,
+    state.modules,
+    state.maxUsers,
+    currency,
+    (state.addOns ?? []) as AddOnSlug[],
+  );
+
+  function toggleAddOn(addOnSlug: AddOnSlug) {
+    const current = state.addOns ?? [];
+    const next = current.includes(addOnSlug)
+      ? current.filter((a) => a !== addOnSlug)
+      : [...current, addOnSlug];
+    update("addOns", next);
+  }
 
   // Når moduler trigger en plan-promote, hold state.plan i sync med effective plan
   useEffect(() => {
@@ -173,6 +191,58 @@ export function PlanStep({ state, update, currency, onNext, onPrev }: Props) {
           </p>
         </div>
       </label>
+
+      {/* Named add-ons (Forecast etc.) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">Tilkøbsmoduler (add-ons)</p>
+          <p className="text-[11px] text-muted-foreground">Plan-afhængig pris pr. bruger</p>
+        </div>
+        <div className="space-y-2">
+          {ADDON_LIST.map((addon) => {
+            const planSlug = state.plan as PlanSlug;
+            const available = isAddOnAvailable(addon.slug, planSlug);
+            const price = getAddOnPricePerUser(addon.slug, planSlug, currency);
+            const checked = (state.addOns ?? []).includes(addon.slug);
+            return (
+              <label
+                key={addon.slug}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-lg border transition-colors",
+                  available
+                    ? checked
+                      ? "bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 cursor-pointer"
+                      : "bg-card border-border hover:bg-secondary/40 cursor-pointer"
+                    : "bg-secondary/30 border-dashed border-border opacity-60 cursor-not-allowed",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={!available}
+                  onChange={() => available && toggleAddOn(addon.slug)}
+                  className="mt-0.5 accent-primary disabled:opacity-50"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className="text-sm font-medium">{addon.name}</p>
+                    {available ? (
+                      <span className="text-xs tabular-nums text-primary font-semibold whitespace-nowrap">
+                        +{formatPrice(price, currency)} / bruger / md
+                      </span>
+                    ) : (
+                      <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold whitespace-nowrap">
+                        Kræver Medium+
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{addon.tagline}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Moduler — altid synlige med add-on pricing */}
       <div className="space-y-2">

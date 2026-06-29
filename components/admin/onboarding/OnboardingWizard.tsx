@@ -40,6 +40,7 @@ export interface WizardState {
   // Trin 3 — Plan
   plan: PlanSlug;
   modules: string[];
+  addOns: string[];
   maxUsers: number;
   startWithTrial: boolean;
 
@@ -69,6 +70,7 @@ const initialState: WizardState = {
   adminTitle: "",
   plan: "medium",
   modules: ["sales", "support", "marketing", "products"],
+  addOns: [],
   maxUsers: 10,
   startWithTrial: true,
   logoUrl: "",
@@ -137,6 +139,7 @@ export function OnboardingWizard({ defaultCurrency }: Props) {
           adminTitle: state.adminTitle || null,
           plan: state.plan,
           modules: state.modules,
+          addOns: state.addOns ?? [],
           maxUsers: state.maxUsers,
           startWithTrial: state.startWithTrial,
           billingCurrency: defaultCurrency,

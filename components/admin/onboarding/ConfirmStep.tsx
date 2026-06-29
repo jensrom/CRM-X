@@ -77,6 +77,16 @@ export function ConfirmStep({ state, update, currency, onPrev, onSubmit, isSubmi
               </span>
             }
           />
+          {(state.addOns ?? []).length > 0 && (
+            <Row
+              label="Tilkøb"
+              value={
+                <span className="text-xs text-primary font-semibold">
+                  {(state.addOns ?? []).join(", ")}
+                </span>
+              }
+            />
+          )}
           {state.startWithTrial ? (
             <Row label="Trial" value={<span className="text-emerald-600">14 dage gratis</span>} />
           ) : (

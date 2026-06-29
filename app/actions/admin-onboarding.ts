@@ -35,6 +35,7 @@ const onboardingSchema = z.object({
   adminTitle: z.string().nullable(),
   plan: z.enum(["small", "medium", "large"]),
   modules: z.array(z.string()).min(1),
+  addOns: z.array(z.string()).default([]),
   maxUsers: z.number().int().min(1).max(500),
   startWithTrial: z.boolean(),
   billingCurrency: z.enum(["USD", "DKK"]),
@@ -97,11 +98,17 @@ export async function createTenantFromWizard(
     // Vi bruger en transaktion så ved fejl bliver tenant/role/user/invite alle rullet tilbage
     const result = await db.$transaction(async (tx) => {
       // 1. Opret tenant
+      // Sanitize add-ons: Small kan ikke have nogen add-ons (lib/plans gating)
+      const safeAddOns = data.plan === "small" ? [] : (data.addOns ?? []);
+      // Auto-merge add-ons til modules-arrayet saa sidebar-gating er konsistent
+      const mergedModules = Array.from(new Set([...data.modules, ...safeAddOns]));
+
       const tenant = await tx.tenant.create({
         data: {
           name: data.name,
           slug: data.slug,
-          modules: data.modules,
+          modules: mergedModules,
+          addOns: safeAddOns,
           plan: data.plan,
           maxUsers: data.maxUsers,
           status,
