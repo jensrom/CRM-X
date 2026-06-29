@@ -41,6 +41,9 @@ model Tenant {
   // --- Plan & moduler ---
   // Aktive moduler: ["sales","marketing","support","projects","products","licenses"]
   modules       String[] @default(["sales", "support"])
+  // Named add-ons (separat fra plan-modules): ["forecast"]
+  // Saelges som tilkoeb pr seat med plan-afhaengig pris. Se lib/plans.ts ADDONS.
+  addOns        String[] @default([])
   plan          String   @default("small")   // small | medium | large
   maxUsers      Int      @default(5)
 

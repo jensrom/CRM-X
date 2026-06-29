@@ -24,6 +24,27 @@ async function requireSuperAdmin() {
 }
 
 const ALL_MODULES = ["sales", "marketing", "support", "projects", "products", "licenses"];
+const ALL_ADDONS = ["forecast"] as const;
+
+/** Strip add-ons der ikke er tilgaengelige paa plan (fx Forecast paa Small) */
+function sanitizeAddOns(addOns: string[], plan: string): string[] {
+  if (plan === "small") {
+    // Small kan ikke faa nogen add-ons i dag
+    return [];
+  }
+  return addOns;
+}
+
+/**
+ * Auto-merge add-ons til modules-arrayet, saa sidebar-gating + getCurrentUser-
+ * permissions kan bruge en enkelt modules-liste. Eksempel: addOns=["forecast"]
+ * → modules vil indeholde "forecast" (i tillaeg til de valgte plan-moduler).
+ */
+function mergeAddOnsIntoModules(modules: string[], addOns: string[]): string[] {
+  const set = new Set(modules);
+  for (const a of addOns) set.add(a);
+  return Array.from(set);
+}
 
 // --- Validation schemas ---
 
@@ -95,18 +116,25 @@ export async function createTenant(formData: FormData) {
   }
 
   const modules = ALL_MODULES.filter((m) => formData.get(`module_${m}`) === "on");
+  const rawAddOns = ALL_ADDONS.filter((a) => formData.get(`addon_${a}`) === "on");
+  const planSlug = parsed.data.plan ?? "small";
+  const addOns = sanitizeAddOns(rawAddOns, planSlug);
+
+  const baseModules = modules.length > 0 ? modules : ["sales", "support"];
+  const mergedModules = mergeAddOnsIntoModules(baseModules, addOns);
 
   const tenant = await db.tenant.create({
     data: {
       name: parsed.data.name,
       slug: parsed.data.slug,
-      plan: parsed.data.plan ?? "starter",
+      plan: planSlug,
       maxUsers: parsed.data.maxUsers,
-      modules: modules.length > 0 ? modules : ["sales", "support"],
+      modules: mergedModules,
+      addOns,
       isActive: true,
       ticketPrefix: parsed.data.ticketPrefix ?? "T",
       projectPrefix: parsed.data.projectPrefix ?? "P",
-    },
+    } as any,
   });
 
   // Opret standard roller automatisk
@@ -151,21 +179,32 @@ export async function updateTenant(formData: FormData) {
   await requireSuperAdmin();
   const id = formData.get("id") as string;
   const modules = ALL_MODULES.filter((m) => formData.get(`module_${m}`) === "on");
+  const rawAddOns = ALL_ADDONS.filter((a) => formData.get(`addon_${a}`) === "on");
+  const planSlug = (formData.get("plan") as string) || "small";
+  const addOns = sanitizeAddOns(rawAddOns, planSlug);
 
   const before = await db.tenant.findUnique({ where: { id } });
   if (!before) throw new Error("Tenant ikke fundet");
+
+  // Hold modules + addOns synkroniseret saa sidebar-gating er konsistent
+  const mergedModules = mergeAddOnsIntoModules(modules, addOns);
+  // Hvis Forecast ikke laengere er en aktiv add-on, fjern den fra modules
+  const cleanModules = addOns.includes("forecast")
+    ? mergedModules
+    : mergedModules.filter((m) => m !== "forecast");
 
   const after = await db.tenant.update({
     where: { id },
     data: {
       name: formData.get("name") as string,
-      plan: formData.get("plan") as string,
+      plan: planSlug,
       maxUsers: parseInt(formData.get("maxUsers") as string) || 5,
       isActive: formData.get("isActive") === "true",
-      modules,
+      modules: cleanModules,
+      addOns,
       ticketPrefix: (formData.get("ticketPrefix") as string) || "T",
       projectPrefix: (formData.get("projectPrefix") as string) || "P",
-    },
+    } as any,
   });
 
   const changes = diff(

@@ -7,6 +7,7 @@ import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import { TenantLifecyclePanel } from "@/components/admin/TenantLifecyclePanel";
 import { TenantStatusBadge } from "@/components/admin/TenantStatusBadge";
+import { ADDON_LIST, isAddOnAvailable, getAddOnPricePerUser, type PlanSlug, type AddOnSlug } from "@/lib/plans";
 
 const MODULES = [
   { key: "sales",     label: "Salg",      desc: "Pipeline, tilbud, deals" },
@@ -174,9 +175,9 @@ export default async function TenantDetailPage({
                     <label className="block text-sm font-medium">Plan</label>
                     <select name="plan" defaultValue={tenant.plan}
                       className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="starter">Starter</option>
-                      <option value="professional">Professional</option>
-                      <option value="enterprise">Enterprise</option>
+                      <option value="small">Small — 68 kr/seat/md</option>
+                      <option value="medium">Medium — 109 kr/seat/md</option>
+                      <option value="large">Large — 170 kr/seat/md</option>
                     </select>
                   </div>
                   <div className="space-y-1.5">
@@ -215,6 +216,52 @@ export default async function TenantDetailPage({
                         </div>
                       </label>
                     ))}
+                  </div>
+                </div>
+
+                {/* Named add-ons — Forecast etc. Plan-restriktioner gates her. */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-baseline justify-between">
+                    <p className="text-sm font-medium">Tilkøbsmoduler (add-ons)</p>
+                    <p className="text-[10px] text-muted-foreground">Pris pr. seat/md afhænger af plan</p>
+                  </div>
+                  <div className="space-y-2">
+                    {ADDON_LIST.map((addon) => {
+                      const planSlug = (tenant.plan ?? "small") as PlanSlug;
+                      const available = isAddOnAvailable(addon.slug, planSlug);
+                      const price = getAddOnPricePerUser(addon.slug, planSlug, "DKK");
+                      const isOn = (tenant as any).addOns?.includes(addon.slug) ?? false;
+                      return (
+                        <label key={addon.slug}
+                          className={`flex items-start gap-2.5 p-3 rounded-lg border ${
+                            available ? "border-border hover:bg-secondary/50 cursor-pointer" : "border-dashed border-border bg-secondary/30 opacity-60 cursor-not-allowed"
+                          } transition-colors`}>
+                          <input
+                            type="checkbox"
+                            name={`addon_${addon.slug}`}
+                            value="on"
+                            defaultChecked={isOn}
+                            disabled={!available}
+                            className="mt-0.5 disabled:opacity-50"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <p className="text-sm font-medium">{addon.name}</p>
+                              {available ? (
+                                <span className="text-xs tabular-nums text-primary font-semibold whitespace-nowrap">
+                                  +{price} kr/seat/md
+                                </span>
+                              ) : (
+                                <span className="text-[10px] uppercase tracking-wider text-amber-600 dark:text-amber-400 font-semibold whitespace-nowrap">
+                                  Kræver Medium+
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{addon.tagline}</p>
+                          </div>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 

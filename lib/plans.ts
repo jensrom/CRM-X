@@ -152,8 +152,8 @@ export function calculateMonthlyPrice(
 }
 
 /**
- * Add-on pris pr. ekstra modul ud over plan-bundle.
- * Bevidst USD-baseret som plan-priser; DKK regnes via samme USD→DKK kurs.
+ * Add-on pris pr. ekstra modul ud over plan-bundle (legacy — beholdt for bagudkompat).
+ * For Forecast og andre named-addons brug ADDONS-katalog i stedet.
  */
 export const ADDON_PRICE_PER_USER: Record<Currency, number> = {
   USD: 4,
@@ -161,6 +161,69 @@ export const ADDON_PRICE_PER_USER: Record<Currency, number> = {
 };
 
 export type ModuleSlug = PlanDefinition["modules"][number];
+
+// ─────────────────────────────────────────────────────────────
+// NAMED ADD-ONS (Forecast, etc.) — saelges separat pr plan
+// ─────────────────────────────────────────────────────────────
+// Nogle features er for tunge/avancerede til at indgaa i plan-
+// bundler. De saelges som named add-ons med plan-afhaengig pris.
+// Pris skalerer omvendt med plan-stoerrelse: Large kunder faar
+// volume-rabat, Medium betaler en premium. Small har null = ikke
+// tilgaengelig — Forecast giver ingen vaerdi paa et tomt datasaet.
+
+export type AddOnSlug = "forecast";
+
+export interface AddOnDefinition {
+  slug: AddOnSlug;
+  name: string;
+  tagline: string;
+  /** Pris pr. seat pr. md. null = ikke tilgaengelig paa den plan */
+  pricePerUserMonth: Record<PlanSlug, { USD: number; DKK: number } | null>;
+  /** Modul-slug der aktiveres naar add-on er tilkoebt (bruges af sidebar/gating) */
+  module: string;
+  /** Highlights vist i UI naar add-on saelges */
+  highlights: readonly string[];
+  order: number;
+}
+
+export const ADDONS: Record<AddOnSlug, AddOnDefinition> = {
+  forecast: {
+    slug: "forecast",
+    name: "Forecast & Sales Intelligence",
+    tagline: "Predictive analytics paa pipeline, leads og omsaetning",
+    pricePerUserMonth: {
+      small:  null,                                  // ikke tilgaengelig
+      medium: { USD: 12, DKK: usdToDkk(12) },        // premium-pris paa Medium
+      large:  { USD: 8,  DKK: usdToDkk(8)  },        // volume-rabat paa Large
+    },
+    module: "forecast",
+    highlights: [
+      "Sales funnel — drop-off pr stadie",
+      "Velocity-analyse — tid pr deal-stadie",
+      "Omsaetnings-projektion 3-12 mdr",
+      "Hvad-hvis simulator",
+      "Lead → Vundet end-to-end funnel",
+    ],
+    order: 1,
+  },
+} as const;
+
+export const ADDON_LIST: AddOnDefinition[] = Object.values(ADDONS).sort(
+  (a, b) => a.order - b.order
+);
+
+/** Kan en given add-on tilkoebes paa en given plan? */
+export function isAddOnAvailable(addonSlug: AddOnSlug, planSlug: PlanSlug): boolean {
+  const addon = ADDONS[addonSlug];
+  if (!addon) return false;
+  return addon.pricePerUserMonth[planSlug] !== null;
+}
+
+/** Returnerer prisen pr seat for en add-on paa en given plan + valuta. 0 hvis ikke tilgaengelig. */
+export function getAddOnPricePerUser(addonSlug: AddOnSlug, planSlug: PlanSlug, currency: Currency = "DKK"): number {
+  const price = ADDONS[addonSlug]?.pricePerUserMonth[planSlug];
+  return price ? price[currency] : 0;
+}
 
 /**
  * Returnerer hvilke moduler der er add-ons ud over plan-bundlet.
@@ -205,21 +268,25 @@ export interface PriceBreakdown {
   basePricePerUser: number;
   addonModules: ModuleSlug[];
   addonPricePerUser: number;
+  namedAddOns: AddOnSlug[];
+  namedAddOnPricePerUser: number;
   pricePerUserTotal: number;
   monthlyTotal: number;
-  promoted: boolean; // true hvis moduler trak en højere plan
+  promoted: boolean;
 }
 
 /**
  * Beregn fuld månedspris med add-on logik:
  *   1. Hvis valgte moduler ⊇ en højere plans bundle → opgrader automatisk
- *   2. Ellers læg $4/seat (DKK-ækvivalent) pr. ekstra modul
+ *   2. Læg $4/seat (DKK-ækvivalent) pr. ekstra modul-tilkoeb (legacy)
+ *   3. Læg named add-ons til (Forecast etc.) med plan-afhaengig pris
  */
 export function calculatePlanPrice(
   baseSlug: PlanSlug,
   selectedModules: readonly string[],
   seats: number,
   currency: Currency = "USD",
+  selectedAddOns: readonly AddOnSlug[] = [],
 ): PriceBreakdown {
   const effectiveSlug = effectivePlanForModules(baseSlug, selectedModules);
   const effective = PLANS[effectiveSlug];
@@ -228,7 +295,14 @@ export function calculatePlanPrice(
   const basePricePerUser = effective.pricePerUserMonth[currency];
   const addonModules = getAddonModules(effectiveSlug, selectedModules);
   const addonPricePerUser = addonModules.length * ADDON_PRICE_PER_USER[currency];
-  const pricePerUserTotal = basePricePerUser + addonPricePerUser;
+
+  const namedAddOns = selectedAddOns.filter((a) => isAddOnAvailable(a, effectiveSlug));
+  const namedAddOnPricePerUser = namedAddOns.reduce(
+    (sum, a) => sum + getAddOnPricePerUser(a, effectiveSlug, currency),
+    0,
+  );
+
+  const pricePerUserTotal = basePricePerUser + addonPricePerUser + namedAddOnPricePerUser;
   const monthlyTotal = pricePerUserTotal * Math.max(1, seats);
 
   return {
@@ -236,6 +310,8 @@ export function calculatePlanPrice(
     basePricePerUser,
     addonModules,
     addonPricePerUser,
+    namedAddOns,
+    namedAddOnPricePerUser,
     pricePerUserTotal,
     monthlyTotal,
     promoted,
