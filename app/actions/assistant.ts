@@ -986,9 +986,4 @@ async function executeLookup(lookup: AssistantLookup): Promise<AssistantReply> {
       error: safeMsg,
     };
   }
-<<<<<<< Updated upstream
 }
-=======
-}
-
->>>>>>> Stashed changes
