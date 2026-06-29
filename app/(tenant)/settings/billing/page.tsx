@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { startCheckout, openCustomerPortal } from "@/app/actions/billing";
+import { startCheckout, openCustomerPortal, purchaseAddOn, removeAddOn } from "@/app/actions/billing";
 import {
   CreditCard, CheckCircle2, AlertTriangle, Clock, ExternalLink,
   Zap, Building2, Crown, Sparkles, TrendingUp, Plus,
@@ -55,7 +55,7 @@ const STATUS_BADGES: Record<string, { label: string; tone: string; icon: any }> 
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; addOnOk?: string; addOnError?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.tenantId) redirect("/login");
@@ -111,6 +111,18 @@ export default async function BillingPage({
             <p className="text-sm text-amber-900">
               Checkout blev afbrudt. Ingen ændringer er foretaget.
             </p>
+          </div>
+        )}
+        {sp.addOnOk && (
+          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-start gap-3">
+            <CheckCircle2 className="h-4 w-4 text-emerald-700 dark:text-emerald-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-emerald-900 dark:text-emerald-200">{sp.addOnOk}</p>
+          </div>
+        )}
+        {sp.addOnError && (
+          <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-300 dark:border-rose-800 rounded-xl px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-rose-700 dark:text-rose-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-rose-900 dark:text-rose-200">{sp.addOnError}</p>
           </div>
         )}
 
@@ -189,10 +201,84 @@ export default async function BillingPage({
                 );
               })}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-4 px-1">
-              Tilkøb administreres af din konto-ansvarlige. Kontakt support hvis du vil tilføje eller fjerne et tilkøb.
-            </p>
+            {isAdmin && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {(tenant.addOns as string[]).map((slug) => (
+                  <form key={`remove-${slug}`} action={removeAddOn.bind(null, slug)}>
+                    <Button type="submit" size="sm" variant="outline">
+                      Fjern {ADDONS[slug as AddOnSlug]?.name ?? slug}
+                    </Button>
+                  </form>
+                ))}
+              </div>
+            )}
           </section>
+        )}
+
+        {/* Tilkoebsmuligheder — vis kun add-ons der IKKE allerede er aktive,
+             og kun hvis admin + planen tillader add-ons */}
+        {isAdmin && tenant.plan !== "small" && (
+          (() => {
+            const activeSlugs = new Set<string>(tenant.addOns ?? []);
+            const available = Object.values(ADDONS).filter(
+              (a) => !activeSlugs.has(a.slug)
+            );
+            if (available.length === 0) return null;
+            return (
+              <section className="bg-card border border-border rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="h-4 w-4 text-violet-600" />
+                  <h2 className="text-sm font-semibold">Tilkøbsmuligheder</h2>
+                </div>
+                <div className="space-y-3">
+                  {available.map((addon) => {
+                    const planSlug = (tenant.plan ?? "small") as PlanSlug;
+                    const price = getAddOnPricePerUser(addon.slug, planSlug, tenant.billingCurrency as any);
+                    const monthlyTotal = price * (tenant.maxUsers ?? 0);
+                    return (
+                      <div key={addon.slug} className="flex items-start gap-3 p-4 rounded-lg border border-dashed border-border hover:border-violet-300 dark:hover:border-violet-700 transition-colors">
+                        <div className="w-9 h-9 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                          <TrendingUp className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-1">
+                            <p className="text-sm font-semibold">{addon.name}</p>
+                            <p className="text-sm font-bold text-violet-600 dark:text-violet-400 tabular-nums whitespace-nowrap">
+                              +{price} kr/seat/md
+                            </p>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-3">{addon.tagline}</p>
+                          <ul className="space-y-1 mb-3">
+                            {addon.highlights.map((h) => (
+                              <li key={h} className="text-[11px] flex items-start gap-1.5 text-muted-foreground">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600 shrink-0 mt-0.5" />
+                                {h}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/60">
+                            <span className="text-[11px] text-muted-foreground tabular-nums">
+                              {tenant.maxUsers} brugere × {price} kr = <strong className="text-foreground">{monthlyTotal.toLocaleString("da-DK")} kr/md</strong>
+                            </span>
+                            <form action={purchaseAddOn.bind(null, addon.slug)}>
+                              <Button type="submit" size="sm">
+                                Tilkøb
+                              </Button>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-4 px-1">
+                  {tenant.stripeSubscriptionId
+                    ? "Beløb opkræves pro-rata på din næste faktura."
+                    : "Tilkøb aktiveres straks. Du fakturerer ved overgang til betalt plan."}
+                </p>
+              </section>
+            );
+          })()
         )}
 
         {/* Plan-valg */}
