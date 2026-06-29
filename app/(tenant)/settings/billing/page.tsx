@@ -7,8 +7,9 @@ import { redirect } from "next/navigation";
 import { startCheckout, openCustomerPortal } from "@/app/actions/billing";
 import {
   CreditCard, CheckCircle2, AlertTriangle, Clock, ExternalLink,
-  Zap, Building2, Crown, Sparkles,
+  Zap, Building2, Crown, Sparkles, TrendingUp, Plus,
 } from "lucide-react";
+import { ADDONS, getAddOnPricePerUser, type AddOnSlug, type PlanSlug } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,9 @@ export default async function BillingPage({
       billingStatus: true, billingCurrency: true,
       trialEndsAt: true, currentPeriodEnd: true,
       stripeCustomerId: true, stripeSubscriptionId: true,
-    },
-  });
+      addOns: true,
+    } as any,
+  }) as any;
   if (!tenant) redirect("/dashboard");
 
   const sp = await searchParams;
@@ -146,6 +148,52 @@ export default async function BillingPage({
             )}
           </div>
         </section>
+
+        {/* Aktive tilkoeb (named add-ons som Forecast) */}
+        {(tenant.addOns ?? []).length > 0 && (
+          <section className="bg-card border border-border rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Plus className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold">Aktive tilkøb</h2>
+            </div>
+            <div className="space-y-3">
+              {(tenant.addOns as string[]).map((slug) => {
+                const addon = ADDONS[slug as AddOnSlug];
+                if (!addon) return null;
+                const planSlug = (tenant.plan ?? "small") as PlanSlug;
+                const pricePerUser = getAddOnPricePerUser(addon.slug, planSlug, tenant.billingCurrency as any);
+                const monthlyTotal = pricePerUser * (tenant.maxUsers ?? 0);
+                return (
+                  <div key={slug} className="flex items-start gap-3 p-4 rounded-lg bg-secondary/30 border border-border">
+                    <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2 mb-1">
+                        <p className="text-sm font-semibold">{addon.name}</p>
+                        <p className="text-sm font-bold text-primary tabular-nums whitespace-nowrap">
+                          +{pricePerUser} kr/seat/md
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-2">{addon.tagline}</p>
+                      <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-border/60">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          {tenant.maxUsers} brugere × {pricePerUser} kr
+                        </span>
+                        <span className="text-xs font-semibold tabular-nums">
+                          {monthlyTotal.toLocaleString("da-DK")} kr / md
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-4 px-1">
+              Tilkøb administreres af din konto-ansvarlige. Kontakt support hvis du vil tilføje eller fjerne et tilkøb.
+            </p>
+          </section>
+        )}
 
         {/* Plan-valg */}
         {isAdmin && (
