@@ -97,9 +97,23 @@ async function syncSubscription(sub: Stripe.Subscription) {
     return;
   }
 
-  // Find aktuel price-id (foerste item)
-  const priceId = sub.items.data[0]?.price.id ?? null;
+  // Identificer plan-line-item (foerste der matcher en plan-price-id).
+  // Add-on items (Forecast etc.) findes i de oevrige items.
+  const planPriceIds = new Set(
+    [process.env.STRIPE_PRICE_SMALL, process.env.STRIPE_PRICE_MEDIUM, process.env.STRIPE_PRICE_LARGE].filter(Boolean) as string[],
+  );
+  const planItem = sub.items.data.find((it) => planPriceIds.has(it.price.id));
+  const priceId = planItem?.price.id ?? sub.items.data[0]?.price.id ?? null;
   const { plan, maxUsers } = priceId ? priceIdToPlan(priceId) : { plan: "small", maxUsers: 5 };
+
+  // Saml add-on slugs ud fra de oevrige price-ids
+  const addOnSlugs: string[] = [];
+  for (const it of sub.items.data) {
+    const pid = it.price.id;
+    if (pid === process.env.STRIPE_PRICE_FORECAST_MEDIUM || pid === process.env.STRIPE_PRICE_FORECAST_LARGE) {
+      addOnSlugs.push("forecast");
+    }
+  }
 
   const billingStatus = stripeStatusToBilling(sub.status);
 
@@ -107,6 +121,14 @@ async function syncSubscription(sub: Stripe.Subscription) {
   const periodEnd = (sub as any).current_period_end
     ? new Date((sub as any).current_period_end * 1000)
     : null;
+
+  // Hold modules synkront med addOns (auto-merge for sidebar-gating)
+  const existing = await db.tenant.findUnique({
+    where: { id: tenantId },
+    select: { modules: true } as any,
+  });
+  const baseModules = ((existing as any)?.modules ?? []).filter((m: string) => m !== "forecast");
+  const mergedModules = Array.from(new Set([...baseModules, ...addOnSlugs]));
 
   await db.tenant.update({
     where: { id: tenantId },
@@ -117,9 +139,11 @@ async function syncSubscription(sub: Stripe.Subscription) {
       billingStatus,
       plan,
       maxUsers,
+      addOns: addOnSlugs,
+      modules: mergedModules,
       // Hvis kunden var paa trial, marker tenant som aktiv nu
       status: sub.status === "active" || sub.status === "trialing" ? "active" : undefined,
-    },
+    } as any,
   });
 }
 

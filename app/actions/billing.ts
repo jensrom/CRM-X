@@ -8,7 +8,7 @@
 
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { getStripe, planToPriceId } from "@/lib/stripe";
+import { getStripe, planToPriceId, addOnToPriceId } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 
 async function requireAdmin() {
@@ -27,9 +27,15 @@ function getAppUrl(): string {
 
 /**
  * Starter en Stripe Checkout Session for opgradering / nyt abonnement.
+ * Add-ons (Forecast etc.) tilfoejes som separate line-items saa fakturaen
+ * viser dem som distinkte poster.
+ *
  * Redirect'er til Stripe's hosted side.
  */
-export async function startCheckout(plan: "small" | "medium" | "large") {
+export async function startCheckout(
+  plan: "small" | "medium" | "large",
+  addOns: readonly string[] = [],
+) {
   const session = await requireAdmin();
   const tenantId = session.user.tenantId!;
   const userEmail = (session.user as any).email as string | undefined;
@@ -40,9 +46,21 @@ export async function startCheckout(plan: "small" | "medium" | "large") {
     throw new Error(`Pris-id ikke konfigureret for plan "${plan}". Sæt STRIPE_PRICE_${plan.toUpperCase()} i env.`);
   }
 
+  // Byg line-items: plan + alle valgte tilgaengelige add-ons.
+  // Small kan ikke have add-ons — addOnToPriceId returnerer null og line-item skippes.
+  const lineItems: Array<{ price: string; quantity: number }> = [
+    { price: priceId, quantity: 1 },
+  ];
+  for (const addon of addOns) {
+    const addOnPrice = addOnToPriceId(addon, plan);
+    if (addOnPrice) {
+      lineItems.push({ price: addOnPrice, quantity: 1 });
+    }
+  }
+
   const tenant = await db.tenant.findFirst({
     where: { id: tenantId },
-    select: { stripeCustomerId: true, name: true },
+    select: { stripeCustomerId: true, name: true, maxUsers: true },
   });
 
   // Opret Stripe customer hvis ikke eksisterer
@@ -64,14 +82,14 @@ export async function startCheckout(plan: "small" | "medium" | "large") {
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
-    line_items: [{ price: priceId, quantity: 1 }],
+    line_items: lineItems,
     success_url: `${appUrl}/settings/billing?status=success`,
     cancel_url:  `${appUrl}/settings/billing?status=cancelled`,
     allow_promotion_codes: true,
     subscription_data: {
-      metadata: { tenantId },
+      metadata: { tenantId, addOns: addOns.join(",") },
     },
-    metadata: { tenantId },
+    metadata: { tenantId, addOns: addOns.join(",") },
   });
 
   if (!checkoutSession.url) {

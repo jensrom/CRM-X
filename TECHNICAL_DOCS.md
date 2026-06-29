@@ -499,15 +499,62 @@ Glemmer du det får du `Failed to fetch` ved build.
 
 ---
 
-## 10. Plan-tiers (SaaS-pakker)
+## 10. Plan-tiers (SaaS-pakker) + Add-ons
 
-| Pakke | Maks brugere | Pris | Moduler |
+### Plan-pakker
+
+| Pakke | Default seats | Pris/seat/md (DKK) | Pris/seat/md (USD) | Inkluderede moduler |
+|---|---|---|---|---|
+| **Small** | 5 | 68 kr | $10 | sales, support |
+| **Medium** | 10 | 109 kr | $16 | + marketing, products |
+| **Large** | 25 | 170 kr | $25 | + projects, licenses |
+
+Single source of truth: `lib/plans.ts` — `PLANS`-katalog.
+
+### Named add-ons (tilkøb)
+
+Add-ons sælges separat oven på en plan. Pris er **plan-afhængig** så større kunder får volumen-rabat:
+
+| Add-on | Small | Medium | Large |
 |---|---|---|---|
-| Small | 5 | — | sales + support |
-| Medium | 20 | — | + projects + products |
-| Large | 100 | — | + licenses + API-tokens + forecast BETA |
+| **Forecast & Sales Intelligence** | ❌ Ikke tilgængelig | +82 kr ($12) /seat/md | +54 kr ($8) /seat/md |
 
-Stripe Checkout håndterer subscription. Webhook opdaterer Tenant.stripeSubscriptionId, currentPeriodEnd + plan.
+Filosofi: Small kan ikke vælge Forecast fordi feature kræver data-volumen (deals, leads) der typisk ikke eksisterer på lille plan.
+
+Single source of truth: `lib/plans.ts` — `ADDONS`-katalog.
+
+**Datamodel:**
+- `Tenant.modules: String[]` — alle aktive features (inkl. add-ons auto-merget for sidebar-gating)
+- `Tenant.addOns: String[]` — kun tilkøbte add-ons (bruges af billing)
+
+**Validering:**
+- `lib/plans.ts:isAddOnAvailable(slug, plan)` — UI-gating
+- `app/actions/admin.ts:sanitizeAddOns()` — server-side strip ved Small
+- `app/actions/admin.ts:mergeAddOnsIntoModules()` — auto-sync til modules
+
+### Stripe-integration
+
+Stripe Checkout opretter subscription med plan-linje + valgfri add-on-linjer:
+
+```
+Subscription items:
+  • CRM-X Medium plan       → 109 kr/seat × 10 seats = 1090 kr/md
+  • Forecast add-on          → 82 kr/seat × 10 seats =  820 kr/md
+  Total                                              = 1910 kr/md
+```
+
+`app/actions/billing.ts:startCheckout(plan, addOns)` bygger line_items.
+`app/api/webhooks/stripe/route.ts:syncSubscription()` detekterer add-on price-ids og opdaterer `Tenant.addOns` automatisk.
+
+**Required Stripe env-vars:**
+- `STRIPE_PRICE_SMALL`, `STRIPE_PRICE_MEDIUM`, `STRIPE_PRICE_LARGE` — plan-priser
+- `STRIPE_PRICE_FORECAST_MEDIUM`, `STRIPE_PRICE_FORECAST_LARGE` — Forecast add-on priser (Small har ingen)
+
+### Backfill (engangs)
+
+`GET /api/admin/backfill-addons` (super-admin only) migrerer eksisterende tenants:
+- Small-tenants med `forecast` i modules → fjernes (kan ikke have add-on)
+- Medium/Large med `forecast` → flyttes til addOns-array
 
 License-cap håndhæves i UI (`/settings/users`) + ved invite-flow.
 
