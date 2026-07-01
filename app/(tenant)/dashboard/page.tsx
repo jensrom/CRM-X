@@ -11,10 +11,11 @@ import { getAtRiskTickets } from "@/app/actions/sla";
 import { SlaAtRiskWidget } from "@/components/dashboard/SlaAtRiskWidget";
 import { EmptyDashboard } from "@/components/dashboard/EmptyDashboard";
 import { detectPersona, type Persona } from "@/lib/personas";
-import { getMySalesDashboard, getMyTechDashboard } from "@/app/actions/personal-dashboard";
+import { getMySalesDashboard, getMyTechDashboard, getMyLeaderDashboard } from "@/app/actions/personal-dashboard";
 import { PersonaTabs } from "@/components/dashboard/PersonaTabs";
 import { SalesPersonaView } from "@/components/dashboard/SalesPersonaView";
 import { TechPersonaView } from "@/components/dashboard/TechPersonaView";
+import { LeaderPersonaView } from "@/components/dashboard/LeaderPersonaView";
 import {
   Building2, Ticket, TrendingUp, Timer, AlertTriangle, CheckCircle2,
   Clock, ArrowUpRight, FolderKanban, Key, Package, Users, Scissors
@@ -141,13 +142,15 @@ export default async function DashboardPage({
   let persona: Persona = "sales";
   let mySales: any = null;
   let myTech: any = null;
+  let myLeader: any = null;
   if (showPersonaTabs && session?.user?.id && session?.user?.tenantId) {
     persona = await detectPersona({
       userId: session.user.id, tenantId: session.user.tenantId,
       roleName: session.user.role, title: null,
     }).catch(() => "sales" as Persona);
     if (view === "mit") {
-      if (persona === "tech") myTech = await getMyTechDashboard().catch(() => null);
+      if (persona === "leader") myLeader = await getMyLeaderDashboard().catch(() => null);
+      else if (persona === "tech") myTech = await getMyTechDashboard().catch(() => null);
       else mySales = await getMySalesDashboard().catch(() => null);
     }
   }
@@ -196,9 +199,10 @@ export default async function DashboardPage({
 
         {showPersonaTabs && view === "mit" && (
           <>
-            {persona === "tech" && myTech && <TechPersonaView data={myTech} />}
-            {persona !== "tech" && mySales && <SalesPersonaView data={mySales} />}
-            {myTarget && <MyTargetWidget target={myTarget} />}
+            {persona === "leader" && myLeader && <LeaderPersonaView data={myLeader} />}
+            {persona === "tech"   && myTech   && <TechPersonaView   data={myTech} />}
+            {persona === "sales"  && mySales  && <SalesPersonaView  data={mySales} />}
+            {myTarget && persona !== "leader" && <MyTargetWidget target={myTarget} />}
           </>
         )}
 
